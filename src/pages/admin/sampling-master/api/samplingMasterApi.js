@@ -196,13 +196,11 @@ const transformers = {
 
 
   // =============================================================================
-  // FIX #2 & #3: samplingPlanToApi — correct plan_type mapping + iterations + safe numbers
+  // FIX: samplingPlanToApi — uses normalizePlanType for correct plan_type
   // =============================================================================
   samplingPlanToApi: (formData) => {
 
-    // FIX #3: Send the actual plan type code (sp1, sp2, sp3) as the DB expects.
-    // First normalize whatever the form has (handles legacy values too),
-    // then lowercase for DB storage.
+    // Normalize whatever the form has to SP1/SP2/SP3, then lowercase for DB
     const normalizedType = normalizePlanType(formData.samplePlanType);
     const planTypeForDb = normalizedType.toLowerCase();  // sp1, sp2, sp3, sp0
 
