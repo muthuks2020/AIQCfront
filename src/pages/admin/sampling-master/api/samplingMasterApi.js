@@ -1,15 +1,4 @@
-// =============================================================================
-// samplingMasterApi.js — Sampling Master API (FIXED v2)
-// =============================================================================
-// FIXES APPLIED:
-//   1. apiFetch error handler: handles Array errors from Marshmallow nested
-//      list validation (was showing "[object Object]" in alert).
-//   2. samplingPlanToApi: accept_number and reject_number use safe defaults.
-//   3. plan_type: now sends 'sp1', 'sp2', 'sp3' (matching DB schema) instead
-//      of always sending 'aql_based'.
-//   4. iterations: now sent to backend in samplingPlanToApi and read back
-//      in samplingPlanFromApi (was hardcoded to 1).
-// =============================================================================
+
 
 export const SAMPLING_API_CONFIG = {
   useMockData: false,
@@ -137,8 +126,24 @@ const apiFetch = async (url, options = {}) => {
 };
 
 
+// =============================================================================
+// getPlanTypeName — MUST be defined before transformers (no hoisting for const)
+// =============================================================================
+const getPlanTypeName = (type) => {
+  const map = {
+    SP1: 'Level 1 - Normal',
+    SP2: 'Level 2 - Reduced',
+    SP3: 'Level 3 - 100% Inspection',
+    SP0: 'Skip Lot',
+  };
+  return map[type] || 'Level 1 - Normal';
+};
+
+
+// =============================================================================
 // Normalize legacy plan_type values from DB to standard SP codes
 // Old records may have 'aql_based', 'fixed', 'custom', 'normal', 'tightened', 'reduced'
+// =============================================================================
 const normalizePlanType = (rawType) => {
   if (!rawType) return 'SP1';
   const upper = rawType.toUpperCase();
@@ -353,17 +358,6 @@ const transformers = {
     description: p.description || '',
     isActive: p.is_active !== false,
   }),
-};
-
-
-const getPlanTypeName = (type) => {
-  const map = {
-    SP1: 'Level 1 - Normal',
-    SP2: 'Level 2 - Reduced',
-    SP3: 'Level 3 - 100% Inspection',
-    SP0: 'Skip Lot',
-  };
-  return map[type] || type;
 };
 
 
