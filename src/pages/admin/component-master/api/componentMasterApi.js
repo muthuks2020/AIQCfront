@@ -1,3 +1,7 @@
+// =============================================================================
+// Component Master API — Real API Integration
+// =============================================================================
+
 export const COMPONENT_API_CONFIG = {
   useMockData: false,
   logApiCalls: true,
@@ -37,7 +41,7 @@ const getMultipartHeaders = () => {
 };
 
 const ENDPOINTS = {
-
+  // Components
   components:           `${COMPONENT_API_CONFIG.baseUrl}/components`,
   componentById:        (id) => `${COMPONENT_API_CONFIG.baseUrl}/components/${id}`,
   duplicateComponent:   (id) => `${COMPONENT_API_CONFIG.baseUrl}/components/${id}/duplicate`,
@@ -46,7 +50,7 @@ const ENDPOINTS = {
   deleteDocument:       (docId) => `${COMPONENT_API_CONFIG.baseUrl}/components/documents/${docId}`,
   exportComponents:     `${COMPONENT_API_CONFIG.baseUrl}/components/export`,
 
-
+  // Lookups
   lookupCategories:     `${COMPONENT_API_CONFIG.baseUrl}/lookups/categories`,
   lookupGroups:         `${COMPONENT_API_CONFIG.baseUrl}/lookups/groups`,
   lookupUnits:          `${COMPONENT_API_CONFIG.baseUrl}/lookups/units`,
@@ -56,7 +60,7 @@ const ENDPOINTS = {
   lookupQcPlans:        `${COMPONENT_API_CONFIG.baseUrl}/lookups/qc-plans`,
   lookupDepartments:    `${COMPONENT_API_CONFIG.baseUrl}/lookups/departments`,
 
-
+  // Sampling Plans (for inline creation)
   samplingPlans:        `${COMPONENT_API_CONFIG.baseUrl}/sampling-plans`,
 };
 
@@ -77,6 +81,9 @@ const buildQueryString = (params) => {
 };
 
 
+// =============================================================================
+// apiFetch — centralised fetch with error handling
+// =============================================================================
 const apiFetch = async (url, options = {}) => {
   const response = await fetch(url, {
     ...options,
@@ -108,9 +115,12 @@ const apiFetch = async (url, options = {}) => {
 };
 
 
+// =============================================================================
+// Transformers
+// =============================================================================
 const transformers = {
 
-
+  // --- Lookup transformers ---
   categoryFromApi: (apiData) => ({
     id:   apiData.id,
     code: apiData.category_code,
@@ -118,13 +128,11 @@ const transformers = {
     icon: apiData.icon || '📦',
   }),
 
-
   groupFromApi: (apiData) => ({
     id:   apiData.id,
     code: apiData.group_code,
     name: apiData.group_name || apiData.name || '',
   }),
-
 
   samplingPlanFromApi: (apiData) => ({
     id:       apiData.id,
@@ -133,13 +141,11 @@ const transformers = {
     aqlLevel: apiData.aql_level || '',
   }),
 
-
   qcPlanFromApi: (apiData) => ({
     id:   apiData.id,
     code: apiData.plan_code,
     name: apiData.plan_name || apiData.plan_code || '',
   }),
-
 
   unitFromApi: (apiData) => ({
     id:   apiData.id,
@@ -147,13 +153,11 @@ const transformers = {
     name: apiData.unit_name || apiData.unit_code || '',
   }),
 
-
   instrumentFromApi: (apiData) => ({
     id:   apiData.id,
     code: apiData.instrument_code,
     name: apiData.instrument_name || apiData.instrument_code || '',
   }),
-
 
   vendorFromApi: (apiData) => ({
     id:   apiData.id,
@@ -161,14 +165,13 @@ const transformers = {
     name: apiData.vendor_name || apiData.vendor_code || '',
   }),
 
-
   departmentFromApi: (apiData) => ({
     id:   apiData.id,
     code: apiData.department_code,
     name: apiData.department_name || '',
   }),
 
-
+  // --- Checking param transformers ---
   checkingParamFromApi: (p) => ({
     id:             p.id,
     checkingType:   p.checking_type || 'visual',
@@ -186,9 +189,8 @@ const transformers = {
     isMandatory:    p.is_mandatory !== false,
   }),
 
-
   checkingParamToApi: (p, lookupCache = {}) => {
-
+    // Resolve unit ID
     let unitId = p.unitId || null;
     if (!unitId && p.unit && lookupCache.units) {
       const match = lookupCache.units.find(
@@ -198,7 +200,7 @@ const transformers = {
       if (match) unitId = match.id;
     }
 
-
+    // Resolve instrument ID
     let instrumentId = p.instrumentId || null;
     if (!instrumentId && p.instrumentName && lookupCache.instruments) {
       const match = lookupCache.instruments.find(
@@ -222,7 +224,7 @@ const transformers = {
     };
   },
 
-
+  // --- Component list item from API ---
   componentListFromApi: (c) => ({
     id:                c.id,
     componentCode:     c.component_code,
@@ -264,15 +266,13 @@ const transformers = {
     skipLotThreshold:  c.skip_lot_threshold || 5,
   }),
 
-
+  // --- Full component detail from API ---
   componentFullFromApi: (c) => {
     const base = transformers.componentListFromApi(c);
-
 
     const allParams = (c.checking_parameters || []).map(transformers.checkingParamFromApi);
     const visualParams    = allParams.filter(p => p.checkingType === 'visual');
     const functionalParams = allParams.filter(p => p.checkingType !== 'visual');
-
 
     let checkingType = 'visual';
     if (visualParams.length > 0 && functionalParams.length > 0) checkingType = 'both';
@@ -316,13 +316,13 @@ const transformers = {
     };
   },
 
-
+  // --- Form data → API payload ---
+  // FIX: Removed 'status' field from payload — backend hardcodes status='active' on creation
   componentToApi: (formData, lookupCache = {}) => {
-
+    // Resolve category ID
     let categoryId = formData.productCategoryId || null;
     if (!categoryId && formData.productCategory != null && lookupCache.categories) {
       const val = formData.productCategory;
-
       if (typeof val === 'number' || (typeof val === 'string' && !isNaN(Number(val)) && val.trim() !== '')) {
         categoryId = Number(val);
       } else if (typeof val === 'string') {
@@ -335,7 +335,7 @@ const transformers = {
       }
     }
 
-
+    // Resolve group ID
     let groupId = formData.productGroupId || null;
     if (!groupId && formData.productGroup != null && lookupCache.groups) {
       const val = formData.productGroup;
@@ -350,7 +350,7 @@ const transformers = {
       }
     }
 
-
+    // Resolve QC plan ID
     let qcPlanId = formData.qcPlanId || null;
     if (!qcPlanId && formData.qcPlanNo != null && lookupCache.qcPlans) {
       const val = formData.qcPlanNo;
@@ -365,7 +365,7 @@ const transformers = {
       }
     }
 
-
+    // Resolve sampling plan ID
     let samplingPlanId = formData.samplingPlanId || null;
     if (!samplingPlanId && formData.samplingPlan != null && lookupCache.samplingPlans) {
       const val = formData.samplingPlan;
@@ -380,10 +380,10 @@ const transformers = {
       }
     }
 
-
+    // Department ID
     let departmentId = formData.departmentId || null;
 
-
+    // Build checking parameters
     const allParams = [];
     const checkingData = formData.checkingParameters;
     if (checkingData && checkingData.parameters) {
@@ -415,7 +415,7 @@ const transformers = {
       skip_lot_enabled:         formData.skipLotEnabled || false,
       skip_lot_count:           formData.skipLotCount || 0,
       skip_lot_threshold:       formData.skipLotThreshold || 5,
-      status:                   formData.status || 'draft',
+      // FIX: 'status' removed — backend sets status='active' automatically on create
       checking_parameters:      allParams,
     };
 
@@ -424,6 +424,9 @@ const transformers = {
 };
 
 
+// =============================================================================
+// Lookup cache
+// =============================================================================
 let _lookupCache = {
   categories: null,
   groups: {},
@@ -456,6 +459,9 @@ export const clearLookupCache = () => {
 const getLookupCache = () => _lookupCache;
 
 
+// =============================================================================
+// Lookup API calls
+// =============================================================================
 export const getProductCategories = async () => {
   logApiCall('GET', ENDPOINTS.lookupCategories);
 
@@ -491,7 +497,6 @@ export const getProductGroups = async (category) => {
     };
     return mockGroups[category] || [];
   }
-
 
   let categoryId = category;
   if (typeof category === 'string' && isNaN(Number(category))) {
@@ -626,17 +631,19 @@ export const getDepartments = async () => {
 };
 
 
+// =============================================================================
+// Component CRUD
+// =============================================================================
 export const fetchComponents = async (params = {}) => {
   const { page = 1, limit = 12, search, category, status } = params;
   logApiCall('GET', ENDPOINTS.components, params);
 
   if (COMPONENT_API_CONFIG.useMockData) {
     await delay(400);
-
     return { items: [], pagination: { page: 1, limit, total: 0, totalPages: 0 } };
   }
 
-
+  // Resolve category ID
   let categoryId = undefined;
   if (category && category !== 'all') {
     if (typeof category === 'number' || (typeof category === 'string' && !isNaN(Number(category)) && category.trim() !== '')) {
@@ -663,7 +670,6 @@ export const fetchComponents = async (params = {}) => {
 
   const qs = buildQueryString(queryParams);
   const result = await apiFetch(`${ENDPOINTS.components}${qs}`);
-
 
   const items = (result.data || []).map(transformers.componentListFromApi);
   const meta = result.pagination || result.meta || {};
@@ -712,7 +718,7 @@ export const getComponentById = async (id) => {
 
 
 export const createComponent = async (formData) => {
-
+  // Pre-fetch all lookups needed for ID resolution
   await Promise.all([
     getCachedLookup('categories', getProductCategories),
     getCachedLookup('samplingPlans', getSamplingPlans),
@@ -761,7 +767,7 @@ export const createComponent = async (formData) => {
 
 
 export const updateComponent = async (id, formData) => {
-
+  // Pre-fetch all lookups needed for ID resolution
   await Promise.all([
     getCachedLookup('categories', getProductCategories),
     getCachedLookup('samplingPlans', getSamplingPlans),
@@ -769,6 +775,7 @@ export const updateComponent = async (id, formData) => {
     getCachedLookup('units', getUnits),
     getCachedLookup('instruments', getInstruments),
   ]);
+
   if (formData.productCategory) {
     const catVal = formData.productCategory;
     let categoryId;
@@ -860,6 +867,9 @@ export const validatePartCode = async (partCode, excludeId = null) => {
 };
 
 
+// =============================================================================
+// File operations
+// =============================================================================
 export const uploadAttachment = async (file, componentId, fieldName) => {
   logApiCall('POST', ENDPOINTS.uploadDocument, { componentId, fieldName, fileName: file.name });
 
@@ -873,7 +883,6 @@ export const uploadAttachment = async (file, componentId, fieldName) => {
       url: URL.createObjectURL(file),
     };
   }
-
 
   const docTypeMap = {
     drawingAttachment: 'drawing',
@@ -937,7 +946,7 @@ export const exportComponents = async (params = {}) => {
     return { success: true, count: 0 };
   }
 
-
+  // Resolve category ID for export
   let categoryId = null;
   if (params.category) {
     const catVal = params.category;
@@ -966,7 +975,6 @@ export const exportComponents = async (params = {}) => {
   if (!response.ok) {
     throw new Error('Failed to export components');
   }
-
 
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
@@ -1019,7 +1027,7 @@ export const createSamplingPlanInline = async (planData) => {
     body: JSON.stringify(planData),
   });
 
-
+  // Invalidate cache so new plan appears in dropdowns
   _lookupCache.samplingPlans = null;
 
   const plan = result.data || result;
