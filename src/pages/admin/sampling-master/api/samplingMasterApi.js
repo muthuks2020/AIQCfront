@@ -127,7 +127,7 @@ const apiFetch = async (url, options = {}) => {
 
 
 // =============================================================================
-// getPlanTypeName — MUST be defined before transformers (no hoisting for const)
+// getPlanTypeName — MUST be defined before transformers (const is not hoisted)
 // =============================================================================
 const getPlanTypeName = (type) => {
   const map = {
@@ -139,11 +139,8 @@ const getPlanTypeName = (type) => {
   return map[type] || 'Level 1 - Normal';
 };
 
-
-// =============================================================================
 // Normalize legacy plan_type values from DB to standard SP codes
 // Old records may have 'aql_based', 'fixed', 'custom', 'normal', 'tightened', 'reduced'
-// =============================================================================
 const normalizePlanType = (rawType) => {
   if (!rawType) return 'SP1';
   const upper = rawType.toUpperCase();
@@ -203,22 +200,22 @@ const transformers = {
   // =============================================================================
   samplingPlanToApi: (formData) => {
 
-    // FIX #3: Send the actual plan type code (sp1, sp2, sp3) as the DB expects,
-    // NOT 'aql_based' for everything.
-    const planTypeMap = {
-      SP1: 'sp1',
-      SP2: 'sp2',
-      SP3: 'sp3',
-      SP0: 'sp0',
-    };
+    // FIX #3: Send the actual plan type code (sp1, sp2, sp3) as the DB expects.
+    // First normalize whatever the form has (handles legacy values too),
+    // then lowercase for DB storage.
+    const normalizedType = normalizePlanType(formData.samplePlanType);
+    const planTypeForDb = normalizedType.toLowerCase();  // sp1, sp2, sp3, sp0
+
+    console.log('[samplingPlanToApi] formData.samplePlanType:', formData.samplePlanType,
+                '→ normalized:', normalizedType, '→ DB:', planTypeForDb);
 
     return {
       plan_code:        formData.samplePlanNo,
       plan_name:        formData.samplePlanName || formData.samplePlanNo,
-      plan_type:        planTypeMap[formData.samplePlanType] || formData.samplePlanType?.toLowerCase() || 'sp1',
+      plan_type:        planTypeForDb,
       aql_level:        formData.aqlLevel || '1.0',
       inspection_level: formData.inspectionLevel || 'II',
-      iterations:       Number(formData.iterations) || 1,   // FIX #4: send iterations to backend
+      iterations:       Number(formData.iterations) || 1,
       details: (formData.lotRanges || []).map(range => {
         const sampleSize = Number(range.iteration1) || 1;
 
@@ -359,6 +356,7 @@ const transformers = {
     isActive: p.is_active !== false,
   }),
 };
+
 
 
 const AQL_TABLES = {
