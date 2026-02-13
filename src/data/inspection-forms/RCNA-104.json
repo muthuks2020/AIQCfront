@@ -1,0 +1,66 @@
+{
+  "partCode": "RCNA-104",
+  "partName": "EC REP STICKER",
+  "qualityPlanNo": "RD-7.3-07-D1-01",
+  "samplingPlanNo": "Table-1",
+  "documentRef": "REC 7.5.5-10/ Rev.No :02",
+  "checkType": "visual",
+  "defaultInstruments": ["Visual"],
+  "maxSampleSize": 10,
+  "checkpoints": [
+    {
+      "id": 1,
+      "sNo": 1,
+      "name": "Art work checking",
+      "type": "visual",
+      "specification": "As per sample",
+      "nominalValue": null,
+      "tolerancePlus": null,
+      "toleranceMinus": null,
+      "unit": "",
+      "instrument": "Visual",
+      "instrumentId": null,
+      "options": ["OK", "NG"],
+      "required": true
+    },
+    {
+      "id": 2,
+      "sNo": 2,
+      "name": "Damage Checking",
+      "type": "visual",
+      "specification": "No damages",
+      "nominalValue": null,
+      "tolerancePlus": null,
+      "toleranceMinus": null,
+      "unit": "",
+      "instrument": "Visual",
+      "instrumentId": null,
+      "options": ["OK", "NG"],
+      "required": true
+    },
+    {
+      "id": 3,
+      "sNo": 3,
+      "name": "Qty Checking",
+      "type": "visual",
+      "specification": "As per Lot Size",
+      "nominalValue": null,
+      "tolerancePlus": null,
+      "toleranceMinus": null,
+      "unit": "Nos",
+      "instrument": "Visual",
+      "instrumentId": null,
+      "options": ["OK", "NG"],
+      "required": true,
+      "qtyCheck": true
+    }
+  ],
+  "metadata": {
+    "version": "1.0",
+    "createdAt": "2026-02-03T00:00:00Z",
+    "updatedAt": "2026-02-03T00:00:00Z",
+    "createdBy": "Admin",
+    "category": "Mechanical",
+    "productGroup": "Labels & Stickers"
+  }
+}

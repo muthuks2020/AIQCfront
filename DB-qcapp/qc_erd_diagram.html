@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Appasamy QC Application - ERD </title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; overflow: auto; }
+  
+  .header { 
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-bottom: 1px solid #334155;
+    padding: 20px 30px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header h1 { font-size: 22px; color: #38bdf8; }
+  .header p { font-size: 13px; color: #94a3b8; margin-top: 4px; }
+  .stats { display: flex; gap: 20px; margin-top: 10px; flex-wrap: wrap; }
+  .stat { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 8px 16px; }
+  .stat-num { font-size: 20px; font-weight: 700; color: #38bdf8; }
+  .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; }
+  
+  .legend { display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #94a3b8; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+  
+  .canvas { padding: 20px; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+  
+  .module-group {
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 16px;
+    width: 100%;
+    max-width: 1400px;
+  }
+  .module-title {
+    font-size: 14px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 2px solid;
+  }
+  .module-tables { display: flex; flex-wrap: wrap; gap: 12px; }
+  
+  .table-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    min-width: 220px;
+    max-width: 280px;
+    flex: 1;
+    font-size: 11px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    overflow: hidden;
+  }
+  .table-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+  
+  .table-header {
+    padding: 8px 12px;
+    font-weight: 700;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .table-icon { font-size: 14px; }
+  
+  .table-cols { padding: 4px 12px 8px; }
+  .col-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 2px 0; border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+  }
+  .col-row:last-child { border-bottom: none; }
+  .col-name { color: #cbd5e1; }
+  .col-name.pk { color: #fbbf24; font-weight: 600; }
+  .col-name.fk { color: #a78bfa; }
+  .col-type { color: #64748b; font-size: 10px; }
+  .col-badge {
+    font-size: 8px; padding: 1px 4px; border-radius: 3px;
+    font-weight: 700; text-transform: uppercase;
+  }
+  .badge-pk { background: #fbbf2420; color: #fbbf24; }
+  .badge-fk { background: #a78bfa20; color: #a78bfa; }
+  .badge-idx { background: #38bdf820; color: #38bdf8; }
+  .badge-uq { background: #34d39920; color: #34d399; }
+  
+  .relations-section {
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 16px;
+    width: 100%;
+    max-width: 1400px;
+    margin-top: 20px;
+  }
+  .rel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 8px; margin-top: 12px; }
+  .rel-item {
+    background: #1e293b; border: 1px solid #334155; border-radius: 6px;
+    padding: 8px 12px; font-size: 11px; display: flex; align-items: center; gap: 8px;
+  }
+  .rel-from { color: #38bdf8; font-weight: 600; min-width: 100px; }
+  .rel-arrow { color: #64748b; }
+  .rel-to { color: #a78bfa; font-weight: 600; }
+  .rel-type { color: #64748b; font-size: 10px; margin-left: auto; }
+
+  /* Module colors */
+  .mod-auth .module-title { color: #f472b6; border-color: #f472b6; }
+  .mod-auth .table-header { background: linear-gradient(135deg, #831843, #4a044e); }
+  .mod-master .module-title { color: #38bdf8; border-color: #38bdf8; }
+  .mod-master .table-header { background: linear-gradient(135deg, #0c4a6e, #164e63); }
+  .mod-plans .module-title { color: #34d399; border-color: #34d399; }
+  .mod-plans .table-header { background: linear-gradient(135deg, #064e3b, #065f46); }
+  .mod-comp .module-title { color: #fbbf24; border-color: #fbbf24; }
+  .mod-comp .table-header { background: linear-gradient(135deg, #713f12, #78350f); }
+  .mod-gate .module-title { color: #fb923c; border-color: #fb923c; }
+  .mod-gate .table-header { background: linear-gradient(135deg, #7c2d12, #9a3412); }
+  .mod-grn .module-title { color: #60a5fa; border-color: #60a5fa; }
+  .mod-grn .table-header { background: linear-gradient(135deg, #1e3a5f, #1e40af30); }
+  .mod-insp .module-title { color: #c084fc; border-color: #c084fc; }
+  .mod-insp .table-header { background: linear-gradient(135deg, #581c87, #6b21a8); }
+  .mod-ir .module-title { color: #2dd4bf; border-color: #2dd4bf; }
+  .mod-ir .table-header { background: linear-gradient(135deg, #134e4a, #115e59); }
+  .mod-store .module-title { color: #86efac; border-color: #86efac; }
+  .mod-store .table-header { background: linear-gradient(135deg, #14532d, #166534); }
+  .mod-return .module-title { color: #f87171; border-color: #f87171; }
+  .mod-return .table-header { background: linear-gradient(135deg, #7f1d1d, #991b1b); }
+  .mod-dc .module-title { color: #fb7185; border-color: #fb7185; }
+  .mod-dc .table-header { background: linear-gradient(135deg, #881337, #9f1239); }
+  .mod-audit .module-title { color: #a3a3a3; border-color: #a3a3a3; }
+  .mod-audit .table-header { background: linear-gradient(135deg, #404040, #525252); }
+  .mod-dash .module-title { color: #67e8f9; border-color: #67e8f9; }
+  .mod-dash .table-header { background: linear-gradient(135deg, #155e75, #0e7490); }
+  .mod-notif .module-title { color: #fda4af; border-color: #fda4af; }
+  .mod-notif .table-header { background: linear-gradient(135deg, #9f1239, #be123c); }
+  
+  .screen-badge {
+    font-size: 9px; background: rgba(255,255,255,0.15); padding: 2px 6px;
+    border-radius: 10px; margin-left: auto; color: rgba(255,255,255,0.7);
+  }
+  
+  @media print {
+    body { background: white; color: #1e293b; }
+    .table-card { border-color: #d1d5db; background: #f8fafc; }
+    .module-group { background: #f1f5f9; border-color: #d1d5db; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Appasamy QC Application — Entity Relationship Diagram</h1>
+  <p>B-SCAN Product Line | Odoo ERP Integration | Holistic Schema — 14 Modules, 42 Tables, 16 Screens</p>
+  <div class="stats">
+    <div class="stat"><div class="stat-num">42</div><div class="stat-label">Tables</div></div>
+    <div class="stat"><div class="stat-num">7</div><div class="stat-label">Views</div></div>
+    <div class="stat"><div class="stat-num">17</div><div class="stat-label">Triggers</div></div>
+    <div class="stat"><div class="stat-num">9</div><div class="stat-label">Functions</div></div>
+    <div class="stat"><div class="stat-num">14</div><div class="stat-label">Modules</div></div>
+    <div class="stat"><div class="stat-num">16</div><div class="stat-label">Screens</div></div>
+    <div class="stat"><div class="stat-num">3</div><div class="stat-label">Roles (M-C-A)</div></div>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div> PK (Primary Key)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div> FK (Foreign Key)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#38bdf8"></div> Indexed</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#34d399"></div> Unique</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f472b6"></div> Auth</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div> Transaction</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#c084fc"></div> Inspection</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div> Returns</div>
+  </div>
+</div>
+
+<div class="canvas">
+
+<!-- M1: AUTH & SYSTEM -->
+<div class="module-group mod-auth">
+  <div class="module-title">M1: System & Authentication — Departments, Users, Roles, Permissions</div>
+  <div class="module-tables">
+    <div class="table-card"><div class="table-header"><span class="table-icon">🏢</span> qc_departments</div><div class="table-cols">
+      <div class="col-row"><span class="col-name pk">id</span><span class="col-badge badge-pk">PK</span></div>
+      <div class="col-row"><span class="col-name">department_code</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name">department_name</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">pass_source/dest_location</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">fail_source/dest_location</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">*_odoo_id</span><span class="col-type">INTEGER</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">👤</span> qc_users</div><div class="table-cols">
+      <div class="col-row"><span class="col-name pk">id</span><span class="col-badge badge-pk">PK</span></div>
+      <div class="col-row"><span class="col-name">user_code</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name">email</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name fk">department_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">office365_id</span><span class="col-type">SSO</span></div>
+      <div class="col-row"><span class="col-name">designation</span><span class="col-type">VARCHAR</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">🎭</span> qc_roles</div><div class="table-cols">
+      <div class="col-row"><span class="col-name pk">id</span><span class="col-badge badge-pk">PK</span></div>
+      <div class="col-row"><span class="col-name">role_code</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name">role_name</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">is_system_role</span><span class="col-type">BOOL</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">🔗</span> qc_user_roles</div><div class="table-cols">
+      <div class="col-row"><span class="col-name fk">user_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name fk">role_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name fk">department_id</span><span class="col-badge badge-fk">FK</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">🔐</span> qc_permissions</div><div class="table-cols">
+      <div class="col-row"><span class="col-name pk">id</span><span class="col-badge badge-pk">PK</span></div>
+      <div class="col-row"><span class="col-name">permission_code</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name">module</span><span class="col-type">VARCHAR</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">🔑</span> qc_role_permissions</div><div class="table-cols">
+      <div class="col-row"><span class="col-name fk">role_id + permission_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">can_create/read/update/delete</span><span class="col-type">BOOL</span></div>
+      <div class="col-row"><span class="col-name">can_approve</span><span class="col-type">BOOL</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">⚙️</span> qc_system_config</div><div class="table-cols">
+      <div class="col-row"><span class="col-name">config_key</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name">config_value</span><span class="col-type">TEXT</span></div>
+      <div class="col-row"><span class="col-name">config_type</span><span class="col-type">str/num/bool</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">📱</span> qc_user_sessions</div><div class="table-cols">
+      <div class="col-row"><span class="col-name fk">user_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">session_token</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">ip_address</span><span class="col-type">VARCHAR</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">🎯</span> qc_user_product_access</div><div class="table-cols">
+      <div class="col-row"><span class="col-name fk">user_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">component_id / category_id</span><span class="col-type">INT</span></div>
+      <div class="col-row"><span class="col-name">access_type</span><span class="col-type">full/read</span></div>
+    </div></div>
+  </div>
+</div>
+
+<!-- M2: MASTER DATA -->
+<div class="module-group mod-master">
+  <div class="module-title">M2: Master Data — Categories, Units, Instruments, Vendors, Locations <span class="screen-badge">Screen 1, 3, 4</span></div>
+  <div class="module-tables">
+    <div class="table-card"><div class="table-header"><span class="table-icon">📂</span> qc_product_categories</div><div class="table-cols">
+      <div class="col-row"><span class="col-name pk">id</span><span class="col-badge badge-pk">PK</span></div>
+      <div class="col-row"><span class="col-name">category_code</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name">category_name, icon</span><span class="col-type">VARCHAR</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">📁</span> qc_product_groups</div><div class="table-cols">
+      <div class="col-row"><span class="col-name pk">id</span><span class="col-badge badge-pk">PK</span></div>
+      <div class="col-row"><span class="col-name fk">category_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">group_code, group_name</span><span class="col-type">VARCHAR</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">📏</span> qc_units</div><div class="table-cols">
+      <div class="col-row"><span class="col-name pk">id</span><span class="col-badge badge-pk">PK</span></div>
+      <div class="col-row"><span class="col-name">unit_code, unit_symbol</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name">unit_type</span><span class="col-type">len/wt/count</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">🔧</span> qc_instruments</div><div class="table-cols">
+      <div class="col-row"><span class="col-name pk">id</span><span class="col-badge badge-pk">PK</span></div>
+      <div class="col-row"><span class="col-name">instrument_code</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name">make, model, serial_no</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">calibration_due_date</span><span class="col-type">DATE</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">🏭</span> qc_vendors</div><div class="table-cols">
+      <div class="col-row"><span class="col-name pk">id</span><span class="col-badge badge-pk">PK</span></div>
+      <div class="col-row"><span class="col-name">vendor_code</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name">vendor_name, gst, pan</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">odoo_partner_id</span><span class="col-type">INT</span></div>
+      <div class="col-row"><span class="col-name">quality/delivery_rating</span><span class="col-type">DEC</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">📊</span> qc_sampling_plans</div><div class="table-cols">
+      <div class="col-row"><span class="col-name pk">id</span><span class="col-badge badge-pk">PK</span></div>
+      <div class="col-row"><span class="col-name">plan_code, plan_type</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name">aql_level</span><span class="col-type">VARCHAR</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">📈</span> qc_sampling_plan_details</div><div class="table-cols">
+      <div class="col-row"><span class="col-name fk">sampling_plan_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">lot_size_min/max</span><span class="col-type">INT</span></div>
+      <div class="col-row"><span class="col-name">sample_size, accept/reject_no</span><span class="col-type">INT</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">🚫</span> qc_defect_types</div><div class="table-cols">
+      <div class="col-row"><span class="col-name pk">id</span><span class="col-badge badge-pk">PK</span></div>
+      <div class="col-row"><span class="col-name">defect_code</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name">severity_level</span><span class="col-type">1-3</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">❌</span> qc_rejection_reasons</div><div class="table-cols">
+      <div class="col-row"><span class="col-name pk">id</span><span class="col-badge badge-pk">PK</span></div>
+      <div class="col-row"><span class="col-name">reason_code</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name">reason_category</span><span class="col-type">VARCHAR</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">📍</span> qc_locations</div><div class="table-cols">
+      <div class="col-row"><span class="col-name pk">id</span><span class="col-badge badge-pk">PK</span></div>
+      <div class="col-row"><span class="col-name">location_code</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name">location_type</span><span class="col-type">store/qrt/vendor</span></div>
+      <div class="col-row"><span class="col-name">is_quarantine, is_restricted</span><span class="col-type">BOOL</span></div>
+      <div class="col-row"><span class="col-name">odoo_location_id</span><span class="col-type">INT</span></div>
+    </div></div>
+  </div>
+</div>
+
+<!-- M3: QC PLANS -->
+<div class="module-group mod-plans">
+  <div class="module-title">M3: QC Plans — Plans, Stages, Parameters <span class="screen-badge">Screen 2</span></div>
+  <div class="module-tables">
+    <div class="table-card"><div class="table-header"><span class="table-icon">📋</span> qc_plans</div><div class="table-cols">
+      <div class="col-row"><span class="col-name pk">id</span><span class="col-badge badge-pk">PK</span></div>
+      <div class="col-row"><span class="col-name">plan_code (RD.7.3-07)</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name">revision, revision_date</span><span class="col-type">REV</span></div>
+      <div class="col-row"><span class="col-name">requires_visual/functional</span><span class="col-type">BOOL</span></div>
+      <div class="col-row"><span class="col-name">status</span><span class="col-type">draft/active</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">🔄</span> qc_plan_stages</div><div class="table-cols">
+      <div class="col-row"><span class="col-name pk">id</span><span class="col-badge badge-pk">PK</span></div>
+      <div class="col-row"><span class="col-name fk">qc_plan_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">stage_type</span><span class="col-type">visual/functional</span></div>
+      <div class="col-row"><span class="col-name">stage_sequence</span><span class="col-type">INT</span></div>
+      <div class="col-row"><span class="col-name fk">sampling_plan_id</span><span class="col-badge badge-fk">FK</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">🎯</span> qc_plan_parameters</div><div class="table-cols">
+      <div class="col-row"><span class="col-name fk">qc_plan_stage_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">parameter_name</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">checking_type</span><span class="col-type">visual/func</span></div>
+      <div class="col-row"><span class="col-name">nominal/tol_min/tol_max</span><span class="col-type">DEC</span></div>
+      <div class="col-row"><span class="col-name fk">instrument_id, unit_id</span><span class="col-badge badge-fk">FK</span></div>
+    </div></div>
+  </div>
+</div>
+
+<!-- M4: COMPONENT MASTER -->
+<div class="module-group mod-comp">
+  <div class="module-title">M4: Component Master — Components, Checking Params, Specs, Docs <span class="screen-badge">Screen 1</span></div>
+  <div class="module-tables">
+    <div class="table-card"><div class="table-header"><span class="table-icon">🔩</span> qc_component_master</div><div class="table-cols">
+      <div class="col-row"><span class="col-name pk">id</span><span class="col-badge badge-pk">PK</span></div>
+      <div class="col-row"><span class="col-name">component_code (auto)</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name">part_code, part_name</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name fk">category_id, group_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name fk">qc_plan_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">qc_required, inspection_type</span><span class="col-type">CONFIG</span></div>
+      <div class="col-row"><span class="col-name">test_cert/fqir/coc_required</span><span class="col-type">BOOL</span></div>
+      <div class="col-row"><span class="col-name">pr_process_code</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">skip_lot fields</span><span class="col-type">BOOL/INT</span></div>
+      <div class="col-row"><span class="col-name">status, is_deleted</span><span class="col-type">SOFT DEL</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">✅</span> qc_component_checking_params</div><div class="table-cols">
+      <div class="col-row"><span class="col-name fk">component_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">checking_type</span><span class="col-type">visual/func</span></div>
+      <div class="col-row"><span class="col-name">checking_point, specification</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">nominal/tolerance_min/max</span><span class="col-type">DEC</span></div>
+      <div class="col-row"><span class="col-name fk">instrument_id, unit_id</span><span class="col-badge badge-fk">FK</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">📄</span> qc_component_specifications</div><div class="table-cols">
+      <div class="col-row"><span class="col-name fk">component_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">spec_key / spec_value</span><span class="col-type">KV pair</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">📎</span> qc_component_documents</div><div class="table-cols">
+      <div class="col-row"><span class="col-name fk">component_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">document_type</span><span class="col-type">drawing/cert</span></div>
+      <div class="col-row"><span class="col-name">file_name, file_url</span><span class="col-type">VARCHAR</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">🤝</span> qc_component_vendors</div><div class="table-cols">
+      <div class="col-row"><span class="col-name fk">component_id + vendor_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">is_primary, is_approved</span><span class="col-type">BOOL</span></div>
+      <div class="col-row"><span class="col-name">unit_price, lead_time</span><span class="col-type">DEC/INT</span></div>
+    </div></div>
+  </div>
+</div>
+
+<!-- M5: GATE ENTRY -->
+<div class="module-group mod-gate">
+  <div class="module-title">M5: Gate Entry — Inward Register, Gatepass, Quantity Verification <span class="screen-badge">Screen 5 (NEW)</span></div>
+  <div class="module-tables">
+    <div class="table-card"><div class="table-header"><span class="table-icon">🚪</span> qc_gate_entries</div><div class="table-cols">
+      <div class="col-row"><span class="col-name pk">id</span><span class="col-badge badge-pk">PK</span></div>
+      <div class="col-row"><span class="col-name">gate_entry_number (auto)</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name">inward_register_number</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name fk">vendor_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">po_number, invoice_number</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">gatepass_number</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">quantity_match_status</span><span class="col-type">match/short</span></div>
+      <div class="col-row"><span class="col-name">vehicle_number, driver</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">status</span><span class="col-type">pending→completed</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">📝</span> qc_gate_entry_items</div><div class="table-cols">
+      <div class="col-row"><span class="col-name fk">gate_entry_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name fk">component_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">po/invoice/received_qty</span><span class="col-type">DEC</span></div>
+      <div class="col-row"><span class="col-name">quantity_match</span><span class="col-type">BOOL</span></div>
+      <div class="col-row"><span class="col-name">mismatch_type</span><span class="col-type">shortage/excess</span></div>
+    </div></div>
+  </div>
+</div>
+
+<!-- M6: GRN -->
+<div class="module-group mod-grn">
+  <div class="module-title">M6: GRN — Goods Receipt Note & Items <span class="screen-badge">Screen 6</span></div>
+  <div class="module-tables">
+    <div class="table-card"><div class="table-header"><span class="table-icon">📦</span> qc_grn</div><div class="table-cols">
+      <div class="col-row"><span class="col-name pk">id</span><span class="col-badge badge-pk">PK</span></div>
+      <div class="col-row"><span class="col-name">grn_number (auto)</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name fk">gate_entry_id, vendor_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name fk">quarantine_location_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">po_number, bill_number</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">status, qc_status</span><span class="col-type">STATUS</span></div>
+      <div class="col-row"><span class="col-name">maker/checker/approver_id</span><span class="col-type">M-C-A</span></div>
+      <div class="col-row"><span class="col-name">odoo_picking_id</span><span class="col-type">INT</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">📋</span> qc_grn_items</div><div class="table-cols">
+      <div class="col-row"><span class="col-name fk">grn_id, component_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">po/received/accepted/rejected_qty</span><span class="col-type">DEC</span></div>
+      <div class="col-row"><span class="col-name">qc_required, qc_status</span><span class="col-type">CONFIG</span></div>
+      <div class="col-row"><span class="col-name">inspection_type, sample_size</span><span class="col-type">QC</span></div>
+      <div class="col-row"><span class="col-name">batch_number, lot_number</span><span class="col-type">VARCHAR</span></div>
+    </div></div>
+  </div>
+</div>
+
+<!-- M7: INSPECTION -->
+<div class="module-group mod-insp">
+  <div class="module-title">M7: QC Inspection — Queue, Results, Details, Defects <span class="screen-badge">Screen 7, 8, 9</span></div>
+  <div class="module-tables">
+    <div class="table-card"><div class="table-header"><span class="table-icon">⏳</span> qc_inspection_queue</div><div class="table-cols">
+      <div class="col-row"><span class="col-name">queue_number (auto)</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name fk">grn_id, grn_item_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name fk">component_id, qc_plan_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">lot_size, sample_size, priority</span><span class="col-type">INT</span></div>
+      <div class="col-row"><span class="col-name">assigned_to (Maker)</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">visual/functional/overall_result</span><span class="col-type">pass/fail</span></div>
+      <div class="col-row"><span class="col-name">days_in_quarantine</span><span class="col-type">INT</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">📊</span> qc_inspection_results</div><div class="table-cols">
+      <div class="col-row"><span class="col-name">result_number (auto)</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name fk">inspection_queue_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">stage_type</span><span class="col-type">visual/functional</span></div>
+      <div class="col-row"><span class="col-name">total_checked/passed/failed</span><span class="col-type">INT</span></div>
+      <div class="col-row"><span class="col-name">inspector_id (Maker)</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">verified_by (Checker)</span><span class="col-type">VARCHAR</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">🔍</span> qc_inspection_result_details</div><div class="table-cols">
+      <div class="col-row"><span class="col-name fk">inspection_result_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">parameter_name, checking_type</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">measured_value(s)</span><span class="col-type">DEC</span></div>
+      <div class="col-row"><span class="col-name">is_within_tolerance, result</span><span class="col-type">BOOL/STR</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">🐛</span> qc_inspection_defects</div><div class="table-cols">
+      <div class="col-row"><span class="col-name fk">inspection_result_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name fk">defect_type_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">severity, defect_quantity</span><span class="col-type">VARCHAR/INT</span></div>
+    </div></div>
+  </div>
+</div>
+
+<!-- M8: IR -->
+<div class="module-group mod-ir">
+  <div class="module-title">M8: Inspection Reports (IR) — Formal QC Documentation <span class="screen-badge">Screen 10 (NEW)</span></div>
+  <div class="module-tables">
+    <div class="table-card" style="max-width:400px"><div class="table-header"><span class="table-icon">📜</span> qc_inspection_reports</div><div class="table-cols">
+      <div class="col-row"><span class="col-name">ir_number (auto)</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name fk">inspection_queue_id, grn_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name fk">vendor_id, component_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">quality_plan_code, sample_plan</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">quantity/visual/functional_result</span><span class="col-type">pass/fail</span></div>
+      <div class="col-row"><span class="col-name">overall_disposition</span><span class="col-type">accept/reject</span></div>
+      <div class="col-row"><span class="col-name">maker_id/name/date/signature</span><span class="col-type">MAKER</span></div>
+      <div class="col-row"><span class="col-name">checker_id/name/date/remarks</span><span class="col-type">CHECKER</span></div>
+      <div class="col-row"><span class="col-name">approver_id/name/date</span><span class="col-type">APPROVER</span></div>
+      <div class="col-row"><span class="col-name">pdf_path, status</span><span class="col-type">VARCHAR</span></div>
+    </div></div>
+  </div>
+</div>
+
+<!-- M9: STORE TRANSFER -->
+<div class="module-group mod-store">
+  <div class="module-title">M9: Store Transfer — Quarantine → Store Acceptance <span class="screen-badge">Screen 11 (NEW)</span></div>
+  <div class="module-tables">
+    <div class="table-card" style="max-width:400px"><div class="table-header"><span class="table-icon">🚛</span> qc_store_transfers</div><div class="table-cols">
+      <div class="col-row"><span class="col-name">transfer_number (auto)</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name fk">inspection_report_id, grn_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name fk">source/destination_location_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">transfer_quantity, uom</span><span class="col-type">DEC</span></div>
+      <div class="col-row"><span class="col-name">initiated_by (QC)</span><span class="col-type">MAKER</span></div>
+      <div class="col-row"><span class="col-name">received_by (Store Keeper)</span><span class="col-type">STORE</span></div>
+      <div class="col-row"><span class="col-name">status</span><span class="col-type">initiated→acknowledged</span></div>
+    </div></div>
+  </div>
+</div>
+
+<!-- M10: VENDOR RETURNS -->
+<div class="module-group mod-return">
+  <div class="module-title">M10: Vendor Returns — Return Request & Approval (Maker→Checker→Approver) <span class="screen-badge">Screen 12, 13</span></div>
+  <div class="module-tables">
+    <div class="table-card"><div class="table-header"><span class="table-icon">↩️</span> qc_vendor_returns</div><div class="table-cols">
+      <div class="col-row"><span class="col-name">return_number (auto)</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name fk">grn_id, vendor_id, ir_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">return_type</span><span class="col-type">complete/partial</span></div>
+      <div class="col-row"><span class="col-name">maker_id/remarks/date</span><span class="col-type">MAKER</span></div>
+      <div class="col-row"><span class="col-name">checker_id/action/remarks</span><span class="col-type">CHECKER</span></div>
+      <div class="col-row"><span class="col-name">approver_id/action/remarks</span><span class="col-type">APPROVER</span></div>
+      <div class="col-row"><span class="col-name">status (12 states)</span><span class="col-type">WORKFLOW</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">📦</span> qc_vendor_return_items</div><div class="table-cols">
+      <div class="col-row"><span class="col-name fk">vendor_return_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name fk">grn_item_id, component_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name fk">rejection_reason_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">return_qty, unit_price, amount</span><span class="col-type">DEC</span></div>
+      <div class="col-row"><span class="col-name">deviation_description</span><span class="col-type">TEXT</span></div>
+    </div></div>
+  </div>
+</div>
+
+<!-- M11: DC & DEBIT NOTES -->
+<div class="module-group mod-dc">
+  <div class="module-title">M11: Delivery Challan & Debit Notes <span class="screen-badge">Screen 14 (NEW)</span></div>
+  <div class="module-tables">
+    <div class="table-card"><div class="table-header"><span class="table-icon">🚚</span> qc_delivery_challans</div><div class="table-cols">
+      <div class="col-row"><span class="col-name">dc_number (auto)</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name fk">vendor_return_id, vendor_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">vehicle, courier, tracking</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">status</span><span class="col-type">draft→delivered</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">📝</span> qc_delivery_challan_items</div><div class="table-cols">
+      <div class="col-row"><span class="col-name fk">delivery_challan_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">part_code, quantity, amount</span><span class="col-type">DEC</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">💰</span> qc_debit_notes</div><div class="table-cols">
+      <div class="col-row"><span class="col-name">debit_note_number</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name fk">vendor_return_id, dc_id, vendor_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">original_invoice_no/date/amount</span><span class="col-type">ORIG</span></div>
+      <div class="col-row"><span class="col-name">debit_amount, tax, total</span><span class="col-type">DEC</span></div>
+      <div class="col-row"><span class="col-name">odoo_move_id</span><span class="col-type">INT</span></div>
+    </div></div>
+  </div>
+</div>
+
+<!-- M12: AUDIT -->
+<div class="module-group mod-audit">
+  <div class="module-title">M12: Workflow & Audit — Approvals, Change History, Audit Log, Odoo Sync</div>
+  <div class="module-tables">
+    <div class="table-card"><div class="table-header"><span class="table-icon">📐</span> qc_workflow_definitions</div><div class="table-cols">
+      <div class="col-row"><span class="col-name">workflow_code</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name">requires_maker/checker/approver</span><span class="col-type">BOOL</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">✍️</span> qc_approval_history</div><div class="table-cols">
+      <div class="col-row"><span class="col-name">module + record_id</span><span class="col-badge badge-idx">IDX</span></div>
+      <div class="col-row"><span class="col-name">action, from/to_status</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">action_by, action_role</span><span class="col-type">M/C/A</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">📜</span> qc_component_history</div><div class="table-cols">
+      <div class="col-row"><span class="col-name fk">component_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">field, old/new_value</span><span class="col-type">TEXT</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">🔍</span> qc_audit_log</div><div class="table-cols">
+      <div class="col-row"><span class="col-name">table_name + record_id</span><span class="col-badge badge-idx">IDX</span></div>
+      <div class="col-row"><span class="col-name">action (INSERT/UPDATE/DELETE)</span><span class="col-type">VARCHAR</span></div>
+      <div class="col-row"><span class="col-name">old_data, new_data</span><span class="col-type">JSONB</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">🔄</span> qc_odoo_sync_log</div><div class="table-cols">
+      <div class="col-row"><span class="col-name">sync_type, direction</span><span class="col-type">in/outbound</span></div>
+      <div class="col-row"><span class="col-name">odoo_model, odoo_record_id</span><span class="col-type">INT</span></div>
+      <div class="col-row"><span class="col-name">request/response_data</span><span class="col-type">JSONB</span></div>
+      <div class="col-row"><span class="col-name">status, retry_count</span><span class="col-type">VARCHAR/INT</span></div>
+    </div></div>
+  </div>
+</div>
+
+<!-- M13: DASHBOARD -->
+<div class="module-group mod-dash">
+  <div class="module-title">M13: Dashboard & Reports — Summaries, Vendor Performance <span class="screen-badge">Screen 15, 16</span></div>
+  <div class="module-tables">
+    <div class="table-card"><div class="table-header"><span class="table-icon">📊</span> qc_daily_summary</div><div class="table-cols">
+      <div class="col-row"><span class="col-name">summary_date</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name">grn/inspection/pass/fail counts</span><span class="col-type">INT</span></div>
+      <div class="col-row"><span class="col-name">pass_rate, returns_amount</span><span class="col-type">DEC</span></div>
+    </div></div>
+    <div class="table-card"><div class="table-header"><span class="table-icon">⭐</span> qc_vendor_performance</div><div class="table-cols">
+      <div class="col-row"><span class="col-name fk">vendor_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">period_year + period_month</span><span class="col-badge badge-uq">UQ</span></div>
+      <div class="col-row"><span class="col-name">lots_accepted/rejected</span><span class="col-type">INT</span></div>
+      <div class="col-row"><span class="col-name">acceptance_rate</span><span class="col-type">DEC %</span></div>
+    </div></div>
+  </div>
+</div>
+
+<!-- M14: NOTIFICATIONS -->
+<div class="module-group mod-notif">
+  <div class="module-title">M14: Notifications — System Alerts & Email</div>
+  <div class="module-tables">
+    <div class="table-card"><div class="table-header"><span class="table-icon">🔔</span> qc_notifications</div><div class="table-cols">
+      <div class="col-row"><span class="col-name">notification_type</span><span class="col-type">approval/due/overdue</span></div>
+      <div class="col-row"><span class="col-name fk">recipient_user_id</span><span class="col-badge badge-fk">FK</span></div>
+      <div class="col-row"><span class="col-name">title, message, priority</span><span class="col-type">TEXT</span></div>
+      <div class="col-row"><span class="col-name">is_read, is_email_sent</span><span class="col-type">BOOL</span></div>
+      <div class="col-row"><span class="col-name">action_url</span><span class="col-type">VARCHAR</span></div>
+    </div></div>
+  </div>
+</div>
+
+<!-- RELATIONSHIPS -->
+<div class="relations-section">
+  <div class="module-title" style="color:#38bdf8; border-color:#38bdf8;">Key Relationships (Foreign Key Map)</div>
+  <div class="rel-grid">
+    <div class="rel-item"><span class="rel-from">qc_users</span><span class="rel-arrow">→</span><span class="rel-to">qc_departments</span><span class="rel-type">N:1</span></div>
+    <div class="rel-item"><span class="rel-from">qc_user_roles</span><span class="rel-arrow">→</span><span class="rel-to">qc_users + qc_roles</span><span class="rel-type">N:M</span></div>
+    <div class="rel-item"><span class="rel-from">qc_product_groups</span><span class="rel-arrow">→</span><span class="rel-to">qc_product_categories</span><span class="rel-type">N:1</span></div>
+    <div class="rel-item"><span class="rel-from">qc_plan_stages</span><span class="rel-arrow">→</span><span class="rel-to">qc_plans</span><span class="rel-type">N:1</span></div>
+    <div class="rel-item"><span class="rel-from">qc_plan_parameters</span><span class="rel-arrow">→</span><span class="rel-to">qc_plan_stages</span><span class="rel-type">N:1</span></div>
+    <div class="rel-item"><span class="rel-from">qc_component_master</span><span class="rel-arrow">→</span><span class="rel-to">categories, groups, plans, vendors, depts</span><span class="rel-type">N:1</span></div>
+    <div class="rel-item"><span class="rel-from">qc_component_checking_params</span><span class="rel-arrow">→</span><span class="rel-to">qc_component_master</span><span class="rel-type">N:1</span></div>
+    <div class="rel-item"><span class="rel-from">qc_gate_entries</span><span class="rel-arrow">→</span><span class="rel-to">qc_vendors</span><span class="rel-type">N:1</span></div>
+    <div class="rel-item"><span class="rel-from">qc_gate_entry_items</span><span class="rel-arrow">→</span><span class="rel-to">qc_gate_entries</span><span class="rel-type">N:1</span></div>
+    <div class="rel-item"><span class="rel-from">qc_grn</span><span class="rel-arrow">→</span><span class="rel-to">qc_gate_entries + qc_vendors + qc_locations</span><span class="rel-type">N:1</span></div>
+    <div class="rel-item"><span class="rel-from">qc_grn_items</span><span class="rel-arrow">→</span><span class="rel-to">qc_grn + qc_component_master</span><span class="rel-type">N:1</span></div>
+    <div class="rel-item"><span class="rel-from">qc_inspection_queue</span><span class="rel-arrow">→</span><span class="rel-to">qc_grn + grn_items + components + plans</span><span class="rel-type">N:1</span></div>
+    <div class="rel-item"><span class="rel-from">qc_inspection_results</span><span class="rel-arrow">→</span><span class="rel-to">qc_inspection_queue + plan_stages</span><span class="rel-type">N:1</span></div>
+    <div class="rel-item"><span class="rel-from">qc_inspection_result_details</span><span class="rel-arrow">→</span><span class="rel-to">qc_inspection_results</span><span class="rel-type">N:1</span></div>
+    <div class="rel-item"><span class="rel-from">qc_inspection_reports</span><span class="rel-arrow">→</span><span class="rel-to">queue + grn + vendor + component</span><span class="rel-type">N:1</span></div>
+    <div class="rel-item"><span class="rel-from">qc_store_transfers</span><span class="rel-arrow">→</span><span class="rel-to">IR + grn + grn_items + locations</span><span class="rel-type">N:1</span></div>
+    <div class="rel-item"><span class="rel-from">qc_vendor_returns</span><span class="rel-arrow">→</span><span class="rel-to">grn + IR + vendor</span><span class="rel-type">N:1</span></div>
+    <div class="rel-item"><span class="rel-from">qc_vendor_return_items</span><span class="rel-arrow">→</span><span class="rel-to">returns + grn_items + reasons</span><span class="rel-type">N:1</span></div>
+    <div class="rel-item"><span class="rel-from">qc_delivery_challans</span><span class="rel-arrow">→</span><span class="rel-to">qc_vendor_returns + vendors</span><span class="rel-type">1:1</span></div>
+    <div class="rel-item"><span class="rel-from">qc_debit_notes</span><span class="rel-arrow">→</span><span class="rel-to">returns + DC + vendors</span><span class="rel-type">1:1</span></div>
+    <div class="rel-item"><span class="rel-from">qc_notifications</span><span class="rel-arrow">→</span><span class="rel-to">qc_users</span><span class="rel-type">N:1</span></div>
+    <div class="rel-item"><span class="rel-from">qc_vendor_performance</span><span class="rel-arrow">→</span><span class="rel-to">qc_vendors</span><span class="rel-type">N:1</span></div>
+  </div>
+</div>
+
+<!-- WORKFLOW DIAGRAM -->
+<div class="relations-section">
+  <div class="module-title" style="color:#fbbf24; border-color:#fbbf24;">Workflow: Maker → Checker → Approver (across modules)</div>
+  <div style="display:flex; gap:20px; flex-wrap:wrap; margin-top:12px;">
+    <div style="flex:1; min-width:300px; background:#1e293b; border-radius:8px; padding:16px; border:1px solid #334155;">
+      <h3 style="color:#38bdf8; font-size:13px; margin-bottom:8px;">🟢 MAKER (QC Inspector)</h3>
+      <div style="font-size:11px; color:#94a3b8; line-height:1.8;">
+        ✦ Gate Entry → Quantity Verification<br>
+        ✦ Execute Visual & Functional Inspections<br>
+        ✦ Record measured values vs tolerances<br>
+        ✦ Generate Inspection Reports (IR)<br>
+        ✦ Initiate Vendor Returns (with failure reason)<br>
+        ✦ Initiate Store Transfers
+      </div>
+    </div>
+    <div style="flex:1; min-width:300px; background:#1e293b; border-radius:8px; padding:16px; border:1px solid #334155;">
+      <h3 style="color:#fbbf24; font-size:13px; margin-bottom:8px;">🟡 CHECKER (QC Manager)</h3>
+      <div style="font-size:11px; color:#94a3b8; line-height:1.8;">
+        ✦ Verify Inspection Results<br>
+        ✦ Approve / Reject / Return-to-Maker IRs<br>
+        ✦ Review Vendor Return requests<br>
+        ✦ Validate failure reasons & quantities<br>
+        ✦ Configure QC Plans & Parameters<br>
+        ✦ Monitor Dashboard & Reports
+      </div>
+    </div>
+    <div style="flex:1; min-width:300px; background:#1e293b; border-radius:8px; padding:16px; border:1px solid #334155;">
+      <h3 style="color:#f87171; font-size:13px; margin-bottom:8px;">🔴 APPROVER (Finance/Mgmt)</h3>
+      <div style="font-size:11px; color:#94a3b8; line-height:1.8;">
+        ✦ Final approval for Vendor Returns<br>
+        ✦ Approve Debit Note generation<br>
+        ✦ Review high-value return requests<br>
+        ✦ View QC Reports & compliance docs<br>
+        ✦ Auto-approve below configured threshold
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<div style="text-align:center; padding:20px; color:#475569; font-size:11px;">
+  Appasamy Associates QC Application — Holistic Schema v4.0 — 42 Tables | 14 Modules | 16 Screens<br>
+  Generated: February 3, 2026 | Shellkode Development Team
+</div>
+
+</body>
+</html>
