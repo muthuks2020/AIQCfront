@@ -137,21 +137,42 @@ const apiFetch = async (url, options = {}) => {
 };
 
 
+// Normalize legacy plan_type values from DB to standard SP codes
+// Old records may have 'aql_based', 'fixed', 'custom', 'normal', 'tightened', 'reduced'
+const normalizePlanType = (rawType) => {
+  if (!rawType) return 'SP1';
+  const upper = rawType.toUpperCase();
+  // Already a valid SP code
+  if (['SP0', 'SP1', 'SP2', 'SP3'].includes(upper)) return upper;
+  // Map legacy values
+  const legacyMap = {
+    'AQL_BASED': 'SP1',
+    'NORMAL':    'SP1',
+    'FIXED':     'SP0',
+    'TIGHTENED': 'SP2',
+    'REDUCED':   'SP2',
+    'CUSTOM':    'SP1',
+  };
+  return legacyMap[upper] || 'SP1';
+};
+
 const transformers = {
 
 
   // =============================================================================
-  // FIX #4: samplingPlanFromApi — read iterations from API response
+  // FIX #4: samplingPlanFromApi — read iterations, normalize plan_type
   // =============================================================================
-  samplingPlanFromApi: (apiData) => ({
+  samplingPlanFromApi: (apiData) => {
+    const planType = normalizePlanType(apiData.plan_type);
+    return {
     id:                 apiData.id,
     samplePlanNo:       apiData.plan_code,
     samplePlanName:     apiData.plan_name || '',
-    samplePlanType:     (apiData.plan_type || 'sp1').toUpperCase(),
-    samplePlanTypeName: getPlanTypeName((apiData.plan_type || 'sp1').toUpperCase()),
+    samplePlanType:     planType,
+    samplePlanTypeName: getPlanTypeName(planType),
     aqlLevel:           apiData.aql_level || '',
     inspectionLevel:    apiData.inspection_level || '',
-    iterations:         apiData.iterations || 1,     // FIX: read from API instead of hardcoding
+    iterations:         apiData.iterations || 1,
     status:             apiData.is_active !== false ? 'active' : 'inactive',
     createdAt:          apiData.created_at,
     updatedAt:          apiData.updated_at,
@@ -169,7 +190,7 @@ const transformers = {
       acceptNumber:   d.accept_number,
       rejectNumber:   d.reject_number,
     })),
-  }),
+  };},
 
 
   // =============================================================================
