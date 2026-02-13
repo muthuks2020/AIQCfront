@@ -1,3 +1,16 @@
+// =============================================================================
+// samplingMasterApi.js — Sampling Master API (FIXED v2)
+// =============================================================================
+// FIXES APPLIED:
+//   1. apiFetch error handler: handles Array errors from Marshmallow nested
+//      list validation (was showing "[object Object]" in alert).
+//   2. samplingPlanToApi: accept_number and reject_number use safe defaults.
+//   3. plan_type: now sends 'sp1', 'sp2', 'sp3' (matching DB schema) instead
+//      of always sending 'aql_based'.
+//   4. iterations: now sent to backend in samplingPlanToApi and read back
+//      in samplingPlanFromApi (was hardcoded to 1).
+// =============================================================================
+
 export const SAMPLING_API_CONFIG = {
   useMockData: false,
   logApiCalls: true,
@@ -68,6 +81,9 @@ const logApiCall = (method, url, data = null) => {
 const generateId = (prefix = 'ID') => `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
 
 
+// =============================================================================
+// FIX #1: apiFetch error handler — properly handles array errors
+// =============================================================================
 const apiFetch = async (url, options = {}) => {
   const response = await fetch(url, {
     ...options,
@@ -83,9 +99,28 @@ const apiFetch = async (url, options = {}) => {
     let message = errorBody.message || errorBody.error || `API Error: ${response.status} ${response.statusText}`;
 
     if (errorBody.errors) {
-      const details = typeof errorBody.errors === 'object'
-        ? Object.entries(errorBody.errors).map(([k, v]) => `${k}: ${v}`).join(', ')
-        : String(errorBody.errors);
+      let details;
+      if (Array.isArray(errorBody.errors)) {
+        // Marshmallow nested list validation returns an array of error objects
+        details = errorBody.errors
+          .map((e, i) => {
+            if (typeof e === 'object' && e !== null) {
+              return Object.entries(e).map(([k, v]) => `Row ${i}: ${k}: ${v}`).join(', ');
+            }
+            return String(e);
+          })
+          .filter(Boolean)
+          .join('; ');
+      } else if (typeof errorBody.errors === 'object') {
+        details = Object.entries(errorBody.errors)
+          .map(([k, v]) => {
+            if (typeof v === 'object') return `${k}: ${JSON.stringify(v)}`;
+            return `${k}: ${v}`;
+          })
+          .join(', ');
+      } else {
+        details = String(errorBody.errors);
+      }
       message += ` — ${details}`;
     }
     if (errorBody.details) {
@@ -105,6 +140,9 @@ const apiFetch = async (url, options = {}) => {
 const transformers = {
 
 
+  // =============================================================================
+  // FIX #4: samplingPlanFromApi — read iterations from API response
+  // =============================================================================
   samplingPlanFromApi: (apiData) => ({
     id:                 apiData.id,
     samplePlanNo:       apiData.plan_code,
@@ -113,7 +151,7 @@ const transformers = {
     samplePlanTypeName: getPlanTypeName((apiData.plan_type || 'sp1').toUpperCase()),
     aqlLevel:           apiData.aql_level || '',
     inspectionLevel:    apiData.inspection_level || '',
-    iterations:         apiData.details?.length > 0 ? 1 : 1,
+    iterations:         apiData.iterations || 1,     // FIX: read from API instead of hardcoding
     status:             apiData.is_active !== false ? 'active' : 'inactive',
     createdAt:          apiData.created_at,
     updatedAt:          apiData.updated_at,
@@ -134,29 +172,59 @@ const transformers = {
   }),
 
 
+  // =============================================================================
+  // FIX #2 & #3: samplingPlanToApi — correct plan_type mapping + iterations + safe numbers
+  // =============================================================================
   samplingPlanToApi: (formData) => {
 
-
+    // FIX #3: Send the actual plan type code (sp1, sp2, sp3) as the DB expects,
+    // NOT 'aql_based' for everything.
     const planTypeMap = {
-      SP1: 'aql_based',
-      SP2: 'aql_based',
-      SP3: 'aql_based',
-      SP0: 'fixed',
+      SP1: 'sp1',
+      SP2: 'sp2',
+      SP3: 'sp3',
+      SP0: 'sp0',
     };
 
     return {
       plan_code:        formData.samplePlanNo,
       plan_name:        formData.samplePlanName || formData.samplePlanNo,
-      plan_type:        planTypeMap[formData.samplePlanType] || 'aql_based',
+      plan_type:        planTypeMap[formData.samplePlanType] || formData.samplePlanType?.toLowerCase() || 'sp1',
       aql_level:        formData.aqlLevel || '1.0',
       inspection_level: formData.inspectionLevel || 'II',
-      details: (formData.lotRanges || []).map(range => ({
-        lot_size_min:   Number(range.lotMin),
-        lot_size_max:   Number(range.lotMax),
-        sample_size:    Number(range.iteration1),
-        accept_number:  Number(range.acceptNumber ?? Math.max(0, Number(range.iteration1) - Number(range.rejectNumber || 1))),
-        reject_number:  Number(range.rejectNumber ?? Math.max(1, Number(range.iteration1) - Number(range.passRequired1 || (Number(range.iteration1) - 1)))),
-      })),
+      iterations:       Number(formData.iterations) || 1,   // FIX #4: send iterations to backend
+      details: (formData.lotRanges || []).map(range => {
+        const sampleSize = Number(range.iteration1) || 1;
+
+        // FIX #2: Safe accept_number / reject_number computation
+        let rejectNumber = Number(range.rejectNumber);
+        if (isNaN(rejectNumber) || rejectNumber < 1) {
+          const passReq = Number(range.passRequired1);
+          if (!isNaN(passReq) && passReq > 0 && passReq < sampleSize) {
+            rejectNumber = sampleSize - passReq;
+          } else {
+            rejectNumber = 1;
+          }
+        }
+
+        let acceptNumber = Number(range.acceptNumber);
+        if (isNaN(acceptNumber) || acceptNumber < 0) {
+          acceptNumber = Math.max(0, sampleSize - rejectNumber);
+        }
+
+        // Ensure reject_number > accept_number (backend schema constraint)
+        if (rejectNumber <= acceptNumber) {
+          rejectNumber = acceptNumber + 1;
+        }
+
+        return {
+          lot_size_min:   Number(range.lotMin),
+          lot_size_max:   Number(range.lotMax),
+          sample_size:    sampleSize,
+          accept_number:  acceptNumber,
+          reject_number:  rejectNumber,
+        };
+      }),
     };
   },
 
@@ -524,7 +592,6 @@ export const validateSamplingPlanNo = async (planNo, excludeId = null) => {
     });
     return { isUnique: matches.length === 0 };
   } catch {
-
     return { isUnique: true };
   }
 };
@@ -689,6 +756,7 @@ export const validateQCPlanNo = async (planNo, excludeId = null) => {
     });
     return { isUnique: matches.length === 0 };
   } catch {
+
     return { isUnique: true };
   }
 };
