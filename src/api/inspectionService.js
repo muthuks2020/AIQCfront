@@ -1,4 +1,10 @@
-import { USE_MOCK_API, API_CONFIG, ENDPOINTS, getHeaders } from './config';
+import {
+  USE_MOCK_DATA as USE_MOCK_API,   // alias to avoid renaming every reference
+  API_CONFIG,
+  INSPECTION_ENDPOINTS,
+  GRN_ENDPOINTS,
+  getAuthHeaders as getHeaders,     // alias for backward compat
+} from './config';
 import {
   getMockInspectionQueue,
   getMockBatchDetails,
