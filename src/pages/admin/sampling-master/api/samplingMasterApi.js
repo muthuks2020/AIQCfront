@@ -310,29 +310,52 @@ const transformers = {
     document_number:    formData.documentNumber || null,
     status:             formData.status || 'draft',
 
-    ...(formData.stages && {
-      stages: formData.stages.map(s => ({
-        stage_name:       s.stageName,
-        stage_sequence:   s.stageSequence,
-        stage_type:       s.stageType,
-        is_mandatory:     s.isMandatory ?? true,
-        sampling_plan_id: s.samplingPlanId || null,
-        parameters: (s.parameters || []).map(p => ({
-          parameter_name:     p.parameterName,
-          parameter_sequence: p.parameterSequence,
-          checking_type:      p.checkingType,
-          specification:      p.specification,
-          nominal_value:      p.nominalValue || null,
-          tolerance_min:      p.toleranceMin || null,
-          tolerance_max:      p.toleranceMax || null,
-          unit_id:            p.unitId || null,
-          instrument_id:      p.instrumentId || null,
-          input_type:         p.inputType || 'pass_fail',
-          is_mandatory:       p.isMandatory ?? true,
-          acceptance_criteria: p.acceptanceCriteria || null,
-        })),
-      })),
-    }),
+    // FIX: Always send stages — backend requires at least 1 stage with at least 1 parameter.
+    // When form has stages (e.g. editing), map them as before.
+    // When form has no stages (new plan creation), generate a default Visual Inspection stage.
+    stages: (formData.stages && formData.stages.length > 0)
+      ? formData.stages.map(s => ({
+          stage_name:       s.stageName,
+          stage_sequence:   s.stageSequence,
+          stage_type:       s.stageType,
+          is_mandatory:     s.isMandatory ?? true,
+          sampling_plan_id: s.samplingPlanId || null,
+          parameters: (s.parameters || []).map(p => ({
+            parameter_name:     p.parameterName,
+            parameter_sequence: p.parameterSequence,
+            checking_type:      p.checkingType,
+            specification:      p.specification,
+            nominal_value:      p.nominalValue || null,
+            tolerance_min:      p.toleranceMin || null,
+            tolerance_max:      p.toleranceMax || null,
+            unit_id:            p.unitId || null,
+            instrument_id:      p.instrumentId || null,
+            input_type:         p.inputType || 'pass_fail',
+            is_mandatory:       p.isMandatory ?? true,
+            acceptance_criteria: p.acceptanceCriteria || null,
+          })),
+        }))
+      : [{
+          stage_name:       'Visual Inspection',
+          stage_sequence:   1,
+          stage_type:       'visual',
+          is_mandatory:     true,
+          sampling_plan_id: null,
+          parameters: [{
+            parameter_name:     'General Visual Check',
+            parameter_sequence: 1,
+            checking_type:      'visual',
+            specification:      'No visible defects',
+            nominal_value:      null,
+            tolerance_min:      null,
+            tolerance_max:      null,
+            unit_id:            null,
+            instrument_id:      null,
+            input_type:         'pass_fail',
+            is_mandatory:       true,
+            acceptance_criteria: 'Pass visual inspection',
+          }],
+        }],
   }),
 
 
