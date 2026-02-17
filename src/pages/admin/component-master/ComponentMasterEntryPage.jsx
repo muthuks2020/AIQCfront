@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Package,
   Layers,
@@ -49,6 +49,10 @@ import {
   getSamplingPlans,
   getQCPlans,
   createComponent,
+  updateComponent,
+  getComponentById,
+  uploadAttachment,
+  deleteDocument,
   validatePartCode as apiValidatePartCode,
 } from './api/componentMasterApi';
 
@@ -72,15 +76,19 @@ import { colors } from '../../../constants/theme';
 
 const ComponentMasterEntryPage = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditing = Boolean(id);
 
 
   const [formData, setFormData] = useState(getInitialFormState());
   const [errors, setErrors] = useState(getInitialErrorState());
   const [touched, setTouched] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [partCodeChecking, setPartCodeChecking] = useState(false);
   const [partCodeValid, setPartCodeValid] = useState(false);
+  const [existingDocuments, setExistingDocuments] = useState([]);
 
 
   const [visualEnabled, setVisualEnabled] = useState(false);
@@ -135,6 +143,120 @@ const ComponentMasterEntryPage = () => {
 
     loadMasterData();
   }, []);
+
+
+  // =========================================================================
+  // Load existing component when editing
+  // =========================================================================
+  useEffect(() => {
+    if (isEditing && id) {
+      loadComponent();
+    }
+  }, [id]);
+
+  const loadComponent = async () => {
+    setIsLoading(true);
+    try {
+      const comp = await getComponentById(id);
+
+      // Populate form fields from component data
+      setFormData(prev => ({
+        ...prev,
+        partCode: comp.partCode || '',
+        partName: comp.partName || '',
+        partDescription: comp.partDescription || '',
+        productCategory: comp.productCategoryId || comp.productCategory || '',
+        productGroup: comp.productGroupId || comp.productGroup || '',
+        inspectionType: comp.inspectionType === '100_percent' ? '100%' : (comp.inspectionType || 'sampling'),
+        samplingPlan: comp.samplingPlanId || comp.samplingPlan || '',
+        qcPlanNo: comp.qcPlanId || comp.qcPlanNo || '',
+        drawingNo: comp.drawingNo || '',
+        prProcessCode: comp.prProcessCode || '',
+        testCertRequired: comp.testCertRequired || false,
+        specRequired: comp.specRequired || false,
+        fqirRequired: comp.fqirRequired || false,
+        skipLotEnabled: comp.skipLotEnabled || false,
+        skipLotCount: comp.skipLotCount || '',
+        skipLotThreshold: comp.skipLotThreshold || '',
+      }));
+
+      setPartCodeValid(true);
+
+      // Load product groups for the category
+      if (comp.productCategoryId || comp.productCategory) {
+        try {
+          const groups = await getProductGroups(comp.productCategoryId || comp.productCategory);
+          setProductGroups(groups);
+        } catch (e) {
+          console.error('Error loading groups:', e);
+        }
+      }
+
+      // Populate checking parameters
+      if (comp.visualParams && comp.visualParams.length > 0) {
+        setVisualEnabled(true);
+        setVisualParams(comp.visualParams.map((p, i) => ({
+          id: p.id || i + 1,
+          checkingPoint: p.checkingPoint || '',
+          unit: p.unit || '',
+          specification: p.specification || '',
+          instrumentName: p.instrumentName || '',
+        })));
+      }
+      if (comp.functionalParams && comp.functionalParams.length > 0) {
+        setFunctionalEnabled(true);
+        setFunctionalParams(comp.functionalParams.map((p, i) => ({
+          id: p.id || i + 1,
+          checkingPoint: p.checkingPoint || '',
+          unit: p.unit || 'mm',
+          specification: p.specification || '',
+          instrumentName: p.instrumentName || '',
+          toleranceMin: p.toleranceMin || '',
+          toleranceMax: p.toleranceMax || '',
+        })));
+      }
+
+      // Populate documents — create File-like objects for FormFileUpload display
+      if (comp.documents && comp.documents.length > 0) {
+        setExistingDocuments(comp.documents);
+
+        const docTypeToField = {
+          'drawing': 'drawingAttachment',
+          'test_cert': 'testCertFile',
+          'specification': 'specFile',
+          'fqir': 'fqirFile',
+        };
+
+        const fileUpdates = {};
+        comp.documents.forEach(doc => {
+          const fieldName = docTypeToField[doc.documentType];
+          if (fieldName) {
+            // Create a File-like object the FormFileUpload component can display
+            fileUpdates[fieldName] = {
+              name: doc.fileName,
+              size: doc.fileSize || 0,
+              type: doc.mimeType || 'application/octet-stream',
+              // Custom props to identify this as an existing server file
+              _isExisting: true,
+              _docId: doc.id,
+              _filePath: doc.filePath,
+            };
+          }
+        });
+
+        if (Object.keys(fileUpdates).length > 0) {
+          setFormData(prev => ({ ...prev, ...fileUpdates }));
+        }
+      }
+
+    } catch (error) {
+      console.error('Failed to load component:', error);
+      alert('Failed to load component data: ' + error.message);
+      navigate('/admin/component-master');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
 
   useEffect(() => {
@@ -215,8 +337,20 @@ const ComponentMasterEntryPage = () => {
     }
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const { name, value, error } = e.target;
+
+    // If removing a file that was previously uploaded to the server, delete it
+    const currentFile = formData[name];
+    if (!value && currentFile && currentFile._isExisting && currentFile._docId) {
+      try {
+        await deleteDocument(currentFile._docId);
+        setExistingDocuments(prev => prev.filter(d => d.id !== currentFile._docId));
+      } catch (delErr) {
+        console.error('Error deleting document:', delErr);
+      }
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }));
     if (error) {
       setErrors(prev => setFieldError(prev, name, error));
@@ -289,10 +423,33 @@ const ComponentMasterEntryPage = () => {
 
     setIsSubmitting(true);
     try {
-      await createComponent(submissionData);
+      let savedComp;
+      if (isEditing) {
+        savedComp = await updateComponent(id, submissionData);
+      } else {
+        savedComp = await createComponent(submissionData);
+      }
+
+      // Upload any NEW files (actual File objects, not existing server files)
+      const componentId = isEditing ? id : (savedComp?.id || null);
+      if (componentId) {
+        const fileFields = ['drawingAttachment', 'testCertFile', 'specFile', 'fqirFile'];
+        for (const fieldName of fileFields) {
+          const fileVal = formData[fieldName];
+          if (fileVal && fileVal instanceof File) {
+            try {
+              await uploadAttachment(fileVal, componentId, fieldName);
+            } catch (uploadErr) {
+              console.error(`Error uploading ${fieldName}:`, uploadErr);
+            }
+          }
+        }
+      }
+
       setShowSuccess(true);
     } catch (error) {
-      console.error('Error creating component:', error);
+      console.error(`Error ${isEditing ? 'updating' : 'creating'} component:`, error);
+      alert(`Failed to ${isEditing ? 'update' : 'create'} component: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -405,6 +562,15 @@ const ComponentMasterEntryPage = () => {
 
   return (
     <div className="cm-page">
+      {isLoading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+          <div style={{ textAlign: 'center' }}>
+            <RefreshCw size={32} style={{ animation: 'spin 1s linear infinite', color: '#667085' }} />
+            <p style={{ marginTop: '16px', color: '#667085' }}>Loading component data...</p>
+          </div>
+        </div>
+      ) : (
+      <>
       <Header
         title="Component Master"
         subtitle="Create and manage QC component specifications"
@@ -432,8 +598,8 @@ const ComponentMasterEntryPage = () => {
                     <Package size={28} color="white" />
                   </div>
                   <div>
-                    <h1 className="cm-form-title">New Component Entry</h1>
-                    <p className="cm-form-subtitle">Fill in the details to register a new QC component</p>
+                    <h1 className="cm-form-title">{isEditing ? 'Edit Component' : 'New Component Entry'}</h1>
+                    <p className="cm-form-subtitle">{isEditing ? 'Update the component details' : 'Fill in the details to register a new QC component'}</p>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
@@ -1099,7 +1265,7 @@ const ComponentMasterEntryPage = () => {
                   type="submit"
                   loading={isSubmitting}
                 >
-                  Save Component
+                  {isEditing ? 'Update Component' : 'Save Component'}
                 </FormButton>
               </div>
             </div>
@@ -1110,14 +1276,16 @@ const ComponentMasterEntryPage = () => {
       {}
       {showSuccess && (
         <SuccessModal
-          title="Component Created!"
-          message={`${formData.partCode} - ${formData.partName} has been successfully registered.`}
+          title={isEditing ? 'Component Updated!' : 'Component Created!'}
+          message={`${formData.partCode} - ${formData.partName} has been successfully ${isEditing ? 'updated' : 'registered'}.`}
           onClose={() => {
             setShowSuccess(false);
             navigate('/admin/component-master');
           }}
-          onCreateAnother={handleCreateAnother}
+          onCreateAnother={isEditing ? undefined : handleCreateAnother}
         />
+      )}
+      </>
       )}
     </div>
   );

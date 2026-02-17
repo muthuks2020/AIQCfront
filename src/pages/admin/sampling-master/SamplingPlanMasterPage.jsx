@@ -100,7 +100,11 @@ const SamplingPlanMasterPage = () => {
     setIsLoading(true);
     try {
       const response = await fetchSamplingPlanById(id);
+      console.log('[DEBUG loadSamplingPlan] Full response:', JSON.stringify(response, null, 2));
       if (response.success && response.data) {
+        console.log('[DEBUG loadSamplingPlan] samplePlanType from API:', response.data.samplePlanType);
+        console.log('[DEBUG loadSamplingPlan] typeof samplePlanType:', typeof response.data.samplePlanType);
+        console.log('[DEBUG loadSamplingPlan] iterations from API:', response.data.iterations);
         setFormData(response.data);
         setPlanNoValid(true);
       }
