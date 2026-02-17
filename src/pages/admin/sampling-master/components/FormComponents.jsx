@@ -190,7 +190,7 @@ export const PlanTypeSelector = ({
       {options.map(option => (
         <div
           key={option.value}
-          className={`sm-plan-type-card ${value === option.value ? 'sm-selected' : ''}`}
+          className={`sm-plan-type-card ${String(value).toUpperCase() === String(option.value).toUpperCase() ? 'sm-selected' : ''}`}
           onClick={() => onChange({ target: { name: 'samplePlanType', value: option.value } })}
         >
           <div className="sm-plan-type-icon">{option.icon}</div>
@@ -221,7 +221,7 @@ export const IterationSelector = ({
       {iterations.map(iter => (
         <div
           key={iter.value}
-          className={`sm-iteration-card ${value === iter.value ? 'sm-selected' : ''}`}
+          className={`sm-iteration-card ${Number(value) === iter.value ? 'sm-selected' : ''}`}
           onClick={() => onChange({ target: { name: 'iterations', value: iter.value } })}
         >
           <div className="sm-iteration-number">{iter.value}</div>
