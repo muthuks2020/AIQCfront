@@ -1,20 +1,118 @@
 // =============================================================================
 // Component Master API — Real API Integration
 // =============================================================================
-// All config, headers, fetch, and utilities imported from the single source
-// of truth: src/api/config.js
-// =============================================================================
 
-import {
-  USE_MOCK_DATA,
-  API_CONFIG,
-  COMPONENT_ENDPOINTS as ENDPOINTS,
-  getAuthHeaders,
-  getMultipartHeaders,
-  apiFetch,
-  buildQueryString,
-  logApiCall,
-} from '../../../../api/config';
+export const COMPONENT_API_CONFIG = {
+  useMockData: false,
+  logApiCalls: true,
+  baseUrl: import.meta.env.VITE_API_URL || '/api/v1',
+};
+
+
+export const USE_MOCK_DATA = COMPONENT_API_CONFIG.useMockData;
+export const API_BASE_URL = COMPONENT_API_CONFIG.baseUrl;
+
+
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('authToken');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  return {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` }),
+    'X-User-Id':    user.id    || localStorage.getItem('userId')    || '1',
+    'X-User-Name':  user.name  || localStorage.getItem('userName')  || 'Admin User',
+    'X-User-Role':  user.role  || localStorage.getItem('userRole')  || 'admin',
+    'X-User-Email': user.email || localStorage.getItem('userEmail') || 'admin@appasamy.com',
+  };
+};
+
+const getMultipartHeaders = () => {
+  const token = localStorage.getItem('authToken');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  return {
+    'Accept': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` }),
+    'X-User-Id':    user.id    || localStorage.getItem('userId')    || '1',
+    'X-User-Name':  user.name  || localStorage.getItem('userName')  || 'Admin User',
+    'X-User-Role':  user.role  || localStorage.getItem('userRole')  || 'admin',
+    'X-User-Email': user.email || localStorage.getItem('userEmail') || 'admin@appasamy.com',
+  };
+};
+
+const ENDPOINTS = {
+  // Components
+  components:           `${COMPONENT_API_CONFIG.baseUrl}/components`,
+  componentById:        (id) => `${COMPONENT_API_CONFIG.baseUrl}/components/${id}`,
+  duplicateComponent:   (id) => `${COMPONENT_API_CONFIG.baseUrl}/components/${id}/duplicate`,
+  validatePartCode:     `${COMPONENT_API_CONFIG.baseUrl}/components/validate-part-code`,
+  uploadDocument:       `${COMPONENT_API_CONFIG.baseUrl}/components/upload-document`,
+  deleteDocument:       (docId) => `${COMPONENT_API_CONFIG.baseUrl}/components/documents/${docId}`,
+  exportComponents:     `${COMPONENT_API_CONFIG.baseUrl}/components/export`,
+
+  // Lookups
+  lookupCategories:     `${COMPONENT_API_CONFIG.baseUrl}/lookups/categories`,
+  lookupGroups:         `${COMPONENT_API_CONFIG.baseUrl}/lookups/groups`,
+  lookupUnits:          `${COMPONENT_API_CONFIG.baseUrl}/lookups/units`,
+  lookupInstruments:    `${COMPONENT_API_CONFIG.baseUrl}/lookups/instruments`,
+  lookupVendors:        `${COMPONENT_API_CONFIG.baseUrl}/lookups/vendors`,
+  lookupSamplingPlans:  `${COMPONENT_API_CONFIG.baseUrl}/lookups/sampling-plans`,
+  lookupQcPlans:        `${COMPONENT_API_CONFIG.baseUrl}/lookups/qc-plans`,
+  lookupDepartments:    `${COMPONENT_API_CONFIG.baseUrl}/lookups/departments`,
+
+  // Sampling Plans (for inline creation)
+  samplingPlans:        `${COMPONENT_API_CONFIG.baseUrl}/sampling-plans`,
+};
+
+
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const logApiCall = (method, url, data = null) => {
+  if (COMPONENT_API_CONFIG.logApiCalls) {
+    console.log(`[ComponentAPI ${COMPONENT_API_CONFIG.useMockData ? 'MOCK' : 'REAL'}] ${method} ${url}`, data || '');
+  }
+};
+
+const buildQueryString = (params) => {
+  const filtered = Object.entries(params)
+    .filter(([_, value]) => value !== null && value !== undefined && value !== '')
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
+  return filtered.length > 0 ? `?${filtered.join('&')}` : '';
+};
+
+
+// =============================================================================
+// apiFetch — centralised fetch with error handling
+// =============================================================================
+const apiFetch = async (url, options = {}) => {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      ...getAuthHeaders(),
+      ...(options.headers || {}),
+    },
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    let message = errorBody.message || errorBody.error || `API Error: ${response.status} ${response.statusText}`;
+    if (errorBody.errors) {
+      const details = typeof errorBody.errors === 'object'
+        ? (Array.isArray(errorBody.errors)
+            ? errorBody.errors.map(e => typeof e === 'object' ? `${e.field}: ${e.message}` : String(e)).join(', ')
+            : Object.entries(errorBody.errors).map(([k, v]) => `${k}: ${v}`).join(', '))
+        : String(errorBody.errors);
+      message += ` — ${details}`;
+    }
+    console.error('[ComponentAPI Error]', response.status, url, errorBody);
+    const error = new Error(message);
+    error.status = response.status;
+    error.details = errorBody;
+    throw error;
+  }
+
+  return response.json();
+};
 
 
 // =============================================================================
@@ -367,6 +465,17 @@ const getLookupCache = () => _lookupCache;
 export const getProductCategories = async () => {
   logApiCall('GET', ENDPOINTS.lookupCategories);
 
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(300);
+    return [
+      { id: 'mechanical',  name: 'Mechanical',  icon: '⚙️' },
+      { id: 'electrical',  name: 'Electrical',  icon: '⚡' },
+      { id: 'plastic',     name: 'Plastic',     icon: '🧪' },
+      { id: 'electronics', name: 'Electronics', icon: '🔌' },
+      { id: 'optical',     name: 'Optical',     icon: '🔍' },
+    ];
+  }
+
   const result = await apiFetch(ENDPOINTS.lookupCategories);
   const categories = (result.data || result || []).map(transformers.categoryFromApi);
   _lookupCache.categories = categories;
@@ -376,6 +485,18 @@ export const getProductCategories = async () => {
 
 export const getProductGroups = async (category) => {
   logApiCall('GET', `${ENDPOINTS.lookupGroups}?category_id=${category}`);
+
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(200);
+    const mockGroups = {
+      mechanical:  ['Housings', 'Frames', 'Casings', 'Brackets', 'Enclosures'],
+      electrical:  ['Cables', 'Connectors', 'Switches', 'Transformers', 'Motors'],
+      plastic:     ['Covers', 'Panels', 'Lenses', 'Buttons', 'Gaskets'],
+      electronics: ['PCB Assembly', 'Display Modules', 'Sensors', 'Controllers', 'Power Units'],
+      optical:     ['Lenses', 'Mirrors', 'Filters', 'Prisms', 'Light Guides'],
+    };
+    return mockGroups[category] || [];
+  }
 
   let categoryId = category;
   if (typeof category === 'string' && isNaN(Number(category))) {
@@ -397,6 +518,17 @@ export const getProductGroups = async (category) => {
 export const getSamplingPlans = async () => {
   logApiCall('GET', ENDPOINTS.lookupSamplingPlans);
 
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(300);
+    return [
+      { id: 'SP-001', name: 'Critical Components - Level I', aqlLevel: 'Level I' },
+      { id: 'SP-002', name: 'Electrical Assembly - Level II', aqlLevel: 'Level II' },
+      { id: 'SP-003', name: 'Visual Inspection - Standard', aqlLevel: 'Level III' },
+      { id: 'SP-004', name: 'High-Precision Parts', aqlLevel: 'Special S-3' },
+      { id: 'SP-005', name: 'General Inspection', aqlLevel: 'Level I' },
+    ];
+  }
+
   const result = await apiFetch(ENDPOINTS.lookupSamplingPlans);
   const plans = (result.data || result || []).map(transformers.samplingPlanFromApi);
   _lookupCache.samplingPlans = plans;
@@ -406,6 +538,19 @@ export const getSamplingPlans = async () => {
 
 export const getQCPlans = async () => {
   logApiCall('GET', ENDPOINTS.lookupQcPlans);
+
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(300);
+    return [
+      { id: 'RD.7.3-01', name: 'B-SCAN Probe QC Plan' },
+      { id: 'RD.7.3-02', name: 'Display Module QC Plan' },
+      { id: 'RD.7.3-03', name: 'Cable Assembly QC Plan' },
+      { id: 'RD.7.3-04', name: 'Enclosure QC Plan' },
+      { id: 'RD.7.3-05', name: 'Power Supply QC Plan' },
+      { id: 'RD.7.3-06', name: 'PCB Assembly QC Plan' },
+      { id: 'RD.7.3-07', name: 'Optical Components QC Plan' },
+    ];
+  }
 
   const result = await apiFetch(ENDPOINTS.lookupQcPlans);
   const plans = (result.data || result || []).map(transformers.qcPlanFromApi);
@@ -417,6 +562,19 @@ export const getQCPlans = async () => {
 export const getUnits = async () => {
   logApiCall('GET', ENDPOINTS.lookupUnits);
 
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(200);
+    return [
+      { id: 1, code: 'mm', name: 'mm' },
+      { id: 2, code: 'cm', name: 'cm' },
+      { id: 3, code: 'inch', name: 'inch' },
+      { id: 4, code: 'kg', name: 'kg' },
+      { id: 5, code: 'g', name: 'g' },
+      { id: 6, code: 'nos', name: 'Nos' },
+      { id: 7, code: 'pcs', name: 'Pcs' },
+    ];
+  }
+
   const result = await apiFetch(ENDPOINTS.lookupUnits);
   const units = (result.data || result || []).map(transformers.unitFromApi);
   _lookupCache.units = units;
@@ -426,6 +584,15 @@ export const getUnits = async () => {
 
 export const getInstruments = async () => {
   logApiCall('GET', ENDPOINTS.lookupInstruments);
+
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(200);
+    return [
+      { id: 1, code: 'VC', name: 'Vernier Caliper' },
+      { id: 2, code: 'DM', name: 'Digital Micrometer' },
+      { id: 3, code: 'DS', name: 'Digital Scale' },
+    ];
+  }
 
   const result = await apiFetch(ENDPOINTS.lookupInstruments);
   const instruments = (result.data || result || []).map(transformers.instrumentFromApi);
@@ -437,6 +604,11 @@ export const getInstruments = async () => {
 export const getVendors = async () => {
   logApiCall('GET', ENDPOINTS.lookupVendors);
 
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(200);
+    return [];
+  }
+
   const result = await apiFetch(ENDPOINTS.lookupVendors);
   const vendors = (result.data || result || []).map(transformers.vendorFromApi);
   _lookupCache.vendors = vendors;
@@ -446,6 +618,11 @@ export const getVendors = async () => {
 
 export const getDepartments = async () => {
   logApiCall('GET', ENDPOINTS.lookupDepartments);
+
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(200);
+    return [];
+  }
 
   const result = await apiFetch(ENDPOINTS.lookupDepartments);
   const departments = (result.data || result || []).map(transformers.departmentFromApi);
@@ -460,6 +637,11 @@ export const getDepartments = async () => {
 export const fetchComponents = async (params = {}) => {
   const { page = 1, limit = 12, search, category, status } = params;
   logApiCall('GET', ENDPOINTS.components, params);
+
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(400);
+    return { items: [], pagination: { page: 1, limit, total: 0, totalPages: 0 } };
+  }
 
   // Resolve category ID
   let categoryId = undefined;
@@ -525,6 +707,11 @@ export const getComponents = async (filters = {}) => {
 export const getComponentById = async (id) => {
   logApiCall('GET', ENDPOINTS.componentById(id));
 
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(300);
+    throw new Error('Mock mode — component detail not available');
+  }
+
   const result = await apiFetch(ENDPOINTS.componentById(id));
   return transformers.componentFullFromApi(result.data || result);
 };
@@ -564,6 +751,11 @@ export const createComponent = async (formData) => {
   });
 
   logApiCall('POST', ENDPOINTS.components, payload);
+
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(500);
+    return { id: Date.now(), ...formData, status: 'draft' };
+  }
 
   const result = await apiFetch(ENDPOINTS.components, {
     method: 'POST',
@@ -608,6 +800,11 @@ export const updateComponent = async (id, formData) => {
 
   logApiCall('PUT', ENDPOINTS.componentById(id), payload);
 
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(500);
+    return { id, ...formData };
+  }
+
   const result = await apiFetch(ENDPOINTS.componentById(id), {
     method: 'PUT',
     body: JSON.stringify(payload),
@@ -620,6 +817,11 @@ export const updateComponent = async (id, formData) => {
 export const deleteComponent = async (id) => {
   logApiCall('DELETE', ENDPOINTS.componentById(id));
 
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(400);
+    return { success: true };
+  }
+
   const result = await apiFetch(ENDPOINTS.componentById(id), {
     method: 'DELETE',
   });
@@ -631,6 +833,11 @@ export const deleteComponent = async (id) => {
 export const duplicateComponent = async (id) => {
   logApiCall('POST', ENDPOINTS.duplicateComponent(id));
 
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(500);
+    return { id: Date.now(), partCode: 'COPY', partName: 'Copy', status: 'draft' };
+  }
+
   const result = await apiFetch(ENDPOINTS.duplicateComponent(id), {
     method: 'POST',
   });
@@ -641,6 +848,11 @@ export const duplicateComponent = async (id) => {
 
 export const validatePartCode = async (partCode, excludeId = null) => {
   logApiCall('GET', `${ENDPOINTS.validatePartCode}?part_code=${partCode}`);
+
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(200);
+    return { isUnique: true };
+  }
 
   try {
     const qs = buildQueryString({ part_code: partCode });
@@ -660,6 +872,17 @@ export const validatePartCode = async (partCode, excludeId = null) => {
 // =============================================================================
 export const uploadAttachment = async (file, componentId, fieldName) => {
   logApiCall('POST', ENDPOINTS.uploadDocument, { componentId, fieldName, fileName: file.name });
+
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(800);
+    return {
+      success: true,
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+      url: URL.createObjectURL(file),
+    };
+  }
 
   const docTypeMap = {
     drawingAttachment: 'drawing',
@@ -702,6 +925,11 @@ export const uploadAttachment = async (file, componentId, fieldName) => {
 export const deleteDocument = async (docId) => {
   logApiCall('DELETE', ENDPOINTS.deleteDocument(docId));
 
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(400);
+    return { success: true };
+  }
+
   const result = await apiFetch(ENDPOINTS.deleteDocument(docId), {
     method: 'DELETE',
   });
@@ -712,6 +940,11 @@ export const deleteDocument = async (docId) => {
 
 export const exportComponents = async (params = {}) => {
   logApiCall('POST', ENDPOINTS.exportComponents, params);
+
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(800);
+    return { success: true, count: 0 };
+  }
 
   // Resolve category ID for export
   let categoryId = null;
@@ -758,6 +991,11 @@ export const exportComponents = async (params = {}) => {
 export const importComponents = async (file) => {
   logApiCall('POST', `${ENDPOINTS.components}/import`, { fileName: file.name });
 
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(1000);
+    return { success: true, imported: 0 };
+  }
+
   const formData = new FormData();
   formData.append('file', file);
 
@@ -779,6 +1017,11 @@ export const importComponents = async (file) => {
 export const createSamplingPlanInline = async (planData) => {
   logApiCall('POST', ENDPOINTS.samplingPlans, planData);
 
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(500);
+    return { id: Date.now(), code: planData.plan_code, name: planData.plan_name };
+  }
+
   const result = await apiFetch(ENDPOINTS.samplingPlans, {
     method: 'POST',
     body: JSON.stringify(planData),
@@ -792,7 +1035,15 @@ export const createSamplingPlanInline = async (planData) => {
 };
 
 
+export const API_CONFIG = {
+  USE_MOCK_DATA: COMPONENT_API_CONFIG.useMockData,
+  API_BASE_URL:  COMPONENT_API_CONFIG.baseUrl,
+};
+
+
 export default {
+  COMPONENT_API_CONFIG,
+
   getProductCategories,
   getProductGroups,
   getSamplingPlans,
