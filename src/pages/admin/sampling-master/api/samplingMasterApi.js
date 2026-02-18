@@ -1,4 +1,6 @@
-
+// =============================================================================
+// Sampling Master API — Real API Integration
+// =============================================================================
 
 export const SAMPLING_API_CONFIG = {
   useMockData: false,
@@ -8,7 +10,6 @@ export const SAMPLING_API_CONFIG = {
 
 
 const getAuthHeaders = () => {
-
   const savedAuth = localStorage.getItem('appasamy_qc_auth');
   let user = {};
   let token = null;
@@ -21,7 +22,6 @@ const getAuthHeaders = () => {
       console.warn('[API] Failed to parse auth from localStorage');
     }
   }
-
 
   token = localStorage.getItem('authToken');
 
@@ -38,21 +38,15 @@ const getAuthHeaders = () => {
 
 
 const ENDPOINTS = {
-
   samplingPlans:        `${SAMPLING_API_CONFIG.baseUrl}/sampling-plans`,
   samplingPlanById:     (id) => `${SAMPLING_API_CONFIG.baseUrl}/sampling-plans/${id}`,
   calculateSample:      (id) => `${SAMPLING_API_CONFIG.baseUrl}/sampling-plans/${id}/calculate-sample`,
 
-
   qcPlans:              `${SAMPLING_API_CONFIG.baseUrl}/qc-plans`,
   qcPlanById:           (id) => `${SAMPLING_API_CONFIG.baseUrl}/qc-plans/${id}`,
 
-
   departments:          `${SAMPLING_API_CONFIG.baseUrl}/departments`,
-
-
   categories:           `${SAMPLING_API_CONFIG.baseUrl}/categories`,
-
 
   lookupSamplingPlans:  `${SAMPLING_API_CONFIG.baseUrl}/lookups/sampling-plans`,
   lookupQcPlans:        `${SAMPLING_API_CONFIG.baseUrl}/lookups/qc-plans`,
@@ -71,7 +65,7 @@ const generateId = (prefix = 'ID') => `${prefix}-${Date.now()}-${Math.random().t
 
 
 // =============================================================================
-// FIX #1: apiFetch error handler — properly handles array errors
+// apiFetch — handles errors including Marshmallow array errors
 // =============================================================================
 const apiFetch = async (url, options = {}) => {
   const response = await fetch(url, {
@@ -90,7 +84,6 @@ const apiFetch = async (url, options = {}) => {
     if (errorBody.errors) {
       let details;
       if (Array.isArray(errorBody.errors)) {
-        // Marshmallow nested list validation returns an array of error objects
         details = errorBody.errors
           .map((e, i) => {
             if (typeof e === 'object' && e !== null) {
@@ -127,7 +120,7 @@ const apiFetch = async (url, options = {}) => {
 
 
 // =============================================================================
-// getPlanTypeName — MUST be defined before transformers (const is not hoisted)
+// getPlanTypeName — MUST be defined before transformers
 // =============================================================================
 const getPlanTypeName = (type) => {
   const map = {
@@ -139,8 +132,10 @@ const getPlanTypeName = (type) => {
   return map[type] || 'Level 1 - Normal';
 };
 
-// Normalize legacy plan_type values from DB to standard SP codes
-// Old records may have 'aql_based', 'fixed', 'custom', 'normal', 'tightened', 'reduced'
+
+// =============================================================================
+// normalizePlanType — converts any legacy/DB plan_type to uppercase SP code
+// =============================================================================
 const normalizePlanType = (rawType) => {
   if (!rawType) return 'SP1';
   const upper = rawType.toUpperCase();
@@ -158,51 +153,51 @@ const normalizePlanType = (rawType) => {
   return legacyMap[upper] || 'SP1';
 };
 
+
+// =============================================================================
+// Transformers
+// =============================================================================
 const transformers = {
 
-
-  // =============================================================================
-  // FIX #4: samplingPlanFromApi — read iterations, normalize plan_type
-  // =============================================================================
+  // ---------------------------------------------------------------------------
+  // samplingPlanFromApi — read from API, normalize plan_type + iterations
+  // ---------------------------------------------------------------------------
   samplingPlanFromApi: (apiData) => {
     const planType = normalizePlanType(apiData.plan_type);
     return {
-    id:                 apiData.id,
-    samplePlanNo:       apiData.plan_code,
-    samplePlanName:     apiData.plan_name || '',
-    samplePlanType:     planType,
-    samplePlanTypeName: getPlanTypeName(planType),
-    aqlLevel:           apiData.aql_level || '',
-    inspectionLevel:    apiData.inspection_level || '',
-    iterations:         apiData.iterations || 1,
-    status:             apiData.is_active !== false ? 'active' : 'inactive',
-    createdAt:          apiData.created_at,
-    updatedAt:          apiData.updated_at,
+      id:                 apiData.id,
+      samplePlanNo:       apiData.plan_code,
+      samplePlanName:     apiData.plan_name || '',
+      samplePlanType:     planType,
+      samplePlanTypeName: getPlanTypeName(planType),
+      aqlLevel:           apiData.aql_level || '',
+      inspectionLevel:    apiData.inspection_level || '',
+      iterations:         apiData.iterations || 1,
+      status:             apiData.is_active !== false ? 'active' : 'inactive',
+      createdAt:          apiData.created_at,
+      updatedAt:          apiData.updated_at,
 
-    lotRanges: (apiData.details || []).map((d, idx) => ({
-      id:             d.id || idx,
-      lotMin:         d.lot_size_min,
-      lotMax:         d.lot_size_max,
-      iteration1:     d.sample_size,
-      iteration2:     d.sample_size * 2,
-      iteration3:     d.lot_size_max,
-      passRequired1:  d.sample_size - d.reject_number,
-      passRequired2:  (d.sample_size * 2) - d.reject_number,
-      passRequired3:  d.lot_size_max - d.reject_number,
-      acceptNumber:   d.accept_number,
-      rejectNumber:   d.reject_number,
-    })),
-  };},
+      lotRanges: (apiData.details || []).map((d, idx) => ({
+        id:             d.id || idx,
+        lotMin:         d.lot_size_min,
+        lotMax:         d.lot_size_max,
+        iteration1:     d.sample_size,
+        iteration2:     d.sample_size * 2,
+        iteration3:     d.lot_size_max,
+        passRequired1:  d.sample_size - d.reject_number,
+        passRequired2:  (d.sample_size * 2) - d.reject_number,
+        passRequired3:  d.lot_size_max - d.reject_number,
+        acceptNumber:   d.accept_number,
+        rejectNumber:   d.reject_number,
+      })),
+    };
+  },
 
-
-  // =============================================================================
-  // FIX #2 & #3: samplingPlanToApi — correct plan_type mapping + iterations + safe numbers
-  // =============================================================================
+  // ---------------------------------------------------------------------------
+  // samplingPlanToApi — CRITICAL: sends correct plan_type + iterations to backend
+  // ---------------------------------------------------------------------------
   samplingPlanToApi: (formData) => {
-
-    // FIX #3: Send the actual plan type code (sp1, sp2, sp3) as the DB expects.
-    // First normalize whatever the form has (handles legacy values too),
-    // then lowercase for DB storage.
+    // Normalize whatever the form has (SP1/SP2/SP3) then lowercase for DB storage
     const normalizedType = normalizePlanType(formData.samplePlanType);
     const planTypeForDb = normalizedType.toLowerCase();  // sp1, sp2, sp3, sp0
 
@@ -219,7 +214,7 @@ const transformers = {
       details: (formData.lotRanges || []).map(range => {
         const sampleSize = Number(range.iteration1) || 1;
 
-        // FIX #2: Safe accept_number / reject_number computation
+        // Safe accept_number / reject_number computation
         let rejectNumber = Number(range.rejectNumber);
         if (isNaN(rejectNumber) || rejectNumber < 1) {
           const passReq = Number(range.passRequired1);
@@ -252,6 +247,9 @@ const transformers = {
   },
 
 
+  // ---------------------------------------------------------------------------
+  // Quality Plan transformers
+  // ---------------------------------------------------------------------------
   qualityPlanFromApi: (apiData) => ({
     id:              apiData.id,
     qcPlanNo:        apiData.plan_code,
@@ -264,77 +262,81 @@ const transformers = {
     requiresVisual:  apiData.requires_visual ?? true,
     requiresFunctional: apiData.requires_functional ?? false,
     documentNumber:  apiData.document_number || '',
-    productId:       apiData.product_id || '',
-    departmentId:    apiData.department_id || '',
-    description:     apiData.description || '',
-    status:          apiData.status || 'draft',
-    isActive:        apiData.is_active !== false,
+    status:          apiData.is_active !== false ? 'active' : 'inactive',
     createdAt:       apiData.created_at,
     updatedAt:       apiData.updated_at,
-    stages:          (apiData.stages || []).map(s => ({
-      id:             s.id,
-      stageCode:      s.stage_code,
-      stageName:      s.stage_name,
-      stageType:      s.stage_type,
-      stageSequence:  s.stage_sequence,
-      inspectionType: s.inspection_type,
-      samplingPlanId: s.sampling_plan_id,
-      isMandatory:    s.is_mandatory,
-      parameters:     (s.parameters || []).map(p => ({
-        id:               p.id,
-        parameterName:    p.parameter_name,
-        parameterSequence: p.parameter_sequence,
-        checkingType:     p.checking_type,
-        specification:    p.specification,
-        nominalValue:     p.nominal_value,
-        toleranceMin:     p.tolerance_min,
-        toleranceMax:     p.tolerance_max,
-        unitId:           p.unit_id,
-        instrumentId:     p.instrument_id,
-        inputType:        p.input_type,
-        isMandatory:      p.is_mandatory,
-        acceptanceCriteria: p.acceptance_criteria,
+
+    productId:       apiData.category_id || '',
+    productName:     apiData.category?.category_name || apiData.category_name || '',
+    departmentId:    apiData.department_id || '',
+    departmentName:  apiData.department?.department_name || apiData.department_name || '',
+
+    stages: (apiData.stages || []).map((s, sIdx) => ({
+      id:               s.id,
+      _key:             `stage-${s.id || sIdx}-${Date.now()}`,
+      stageName:        s.stage_name,
+      stageCode:        s.stage_code || '',
+      stageType:        s.stage_type || 'visual',
+      stageSequence:    s.stage_sequence || sIdx + 1,
+      inspectionType:   s.inspection_type || 'sampling',
+      samplingPlanId:   s.sampling_plan_id || '',
+      isMandatory:      s.is_mandatory ?? true,
+      requiresInstrument: s.requires_instrument ?? false,
+      parameters: (s.parameters || []).map((p, pIdx) => ({
+        id:                 p.id,
+        _key:               `param-${p.id || pIdx}-${Date.now()}`,
+        parameterName:      p.parameter_name,
+        parameterSequence:  p.parameter_sequence || pIdx + 1,
+        checkingType:       p.checking_type || 'visual',
+        specification:      p.specification || '',
+        nominalValue:       p.nominal_value || '',
+        toleranceMin:       p.tolerance_min || '',
+        toleranceMax:       p.tolerance_max || '',
+        unitId:             p.unit_id || '',
+        instrumentId:       p.instrument_id || '',
+        inputType:          p.input_type || 'pass_fail',
+        isMandatory:        p.is_mandatory ?? true,
+        acceptanceCriteria: p.acceptance_criteria || '',
       })),
     })),
   }),
 
-
   qualityPlanToApi: (formData) => ({
-    plan_code:          formData.qcPlanNo,
-    plan_name:          formData.planName || formData.qcPlanNo,
-    revision:           formData.documentRevNo,
-    revision_date:      formData.revisionDate || null,
-    effective_date:     formData.effectiveDate || null,
-    plan_type:          formData.planType || 'standard',
-    inspection_stages:  Number(formData.inspectionStages) || 1,
-    requires_visual:    formData.requiresVisual ?? true,
+    plan_code:        formData.qcPlanNo,
+    plan_name:        formData.planName || formData.qcPlanNo,
+    plan_type:        formData.planType || 'standard',
+    category_id:      Number(formData.productId) || null,
+    department_id:    Number(formData.departmentId) || null,
+    revision:         formData.documentRevNo || '',
+    revision_date:    formData.revisionDate || null,
+    effective_date:   formData.effectiveDate || null,
+    document_number:  formData.documentNumber || '',
+    requires_visual:  formData.requiresVisual ?? true,
     requires_functional: formData.requiresFunctional ?? false,
-    document_number:    formData.documentNumber || null,
-    status:             formData.status || 'draft',
-
-    ...(formData.stages && {
-      stages: formData.stages.map(s => ({
-        stage_name:       s.stageName,
-        stage_sequence:   s.stageSequence,
-        stage_type:       s.stageType,
-        is_mandatory:     s.isMandatory ?? true,
-        sampling_plan_id: s.samplingPlanId || null,
-        parameters: (s.parameters || []).map(p => ({
-          parameter_name:     p.parameterName,
-          parameter_sequence: p.parameterSequence,
-          checking_type:      p.checkingType,
-          specification:      p.specification,
-          nominal_value:      p.nominalValue || null,
-          tolerance_min:      p.toleranceMin || null,
-          tolerance_max:      p.toleranceMax || null,
-          unit_id:            p.unitId || null,
-          instrument_id:      p.instrumentId || null,
-          input_type:         p.inputType || 'pass_fail',
-          is_mandatory:       p.isMandatory ?? true,
-          acceptance_criteria: p.acceptanceCriteria || null,
-        })),
+    stages: (formData.stages || []).map((stage, sIdx) => ({
+      stage_name:        stage.stageName,
+      stage_code:        stage.stageCode || `STG-${String(sIdx + 1).padStart(2, '0')}`,
+      stage_type:        stage.stageType || 'visual',
+      stage_sequence:    stage.stageSequence || sIdx + 1,
+      inspection_type:   stage.inspectionType || 'sampling',
+      sampling_plan_id:  stage.samplingPlanId ? Number(stage.samplingPlanId) : null,
+      is_mandatory:      stage.isMandatory ?? true,
+      requires_instrument: stage.requiresInstrument ?? false,
+      parameters: (stage.parameters || []).map((p, pIdx) => ({
+        parameter_name:     p.parameterName,
+        parameter_sequence: p.parameterSequence || pIdx + 1,
+        checking_type:      p.checkingType || 'visual',
+        specification:      p.specification || null,
+        nominal_value:      p.nominalValue ? String(p.nominalValue) : null,
+        tolerance_min:      p.toleranceMin ? String(p.toleranceMin) : null,
+        tolerance_max:      p.toleranceMax ? String(p.toleranceMax) : null,
+        unit_id:            p.unitId ? Number(p.unitId) : null,
+        instrument_id:      p.instrumentId ? Number(p.instrumentId) : null,
+        input_type:         p.inputType || 'pass_fail',
+        is_mandatory:       p.isMandatory ?? true,
+        acceptance_criteria: p.acceptanceCriteria || null,
       })),
-    }),
+    })),
   }),
 
 
@@ -347,7 +349,6 @@ const transformers = {
     isActive: d.is_active !== false,
   }),
 
-
   productFromApi: (p) => ({
     id:       p.id,
     code:     p.category_code,
@@ -358,7 +359,9 @@ const transformers = {
 };
 
 
-
+// =============================================================================
+// Reference Tables
+// =============================================================================
 const AQL_TABLES = {
   SP1: { name: 'Level 1 - Normal', multiplier: 1.0 },
   SP2: { name: 'Level 2 - Reduced', multiplier: 1.5 },
@@ -381,6 +384,9 @@ const LOT_SIZE_RANGES = [
 ];
 
 
+// =============================================================================
+// Mock Data (only used when useMockData = true)
+// =============================================================================
 let mockSamplingPlans = [
   {
     id: 'SP-001', samplePlanNo: 'SP-001', samplePlanType: 'SP1',
@@ -443,6 +449,9 @@ const mockProducts = [
 ];
 
 
+// =============================================================================
+// Calculation Utilities
+// =============================================================================
 export const calculateSampleQuantity = (lotSize, planType = 'SP1') => {
   if (planType === 'SP3') return lotSize;
 
@@ -460,6 +469,9 @@ export const calculateRequiredPass = (sampleQty, iteration = 1) => {
 };
 
 
+// =============================================================================
+// Sampling Plan CRUD
+// =============================================================================
 export const fetchSamplingPlans = async (filters = {}) => {
   logApiCall('GET', ENDPOINTS.samplingPlans, filters);
 
@@ -477,9 +489,7 @@ export const fetchSamplingPlans = async (filters = {}) => {
     return { success: true, data: filtered, total: filtered.length };
   }
 
-
   const params = new URLSearchParams();
-
   if (filters.status !== 'all') params.append('is_active', 'true');
   if (filters.search) params.append('search', filters.search);
   if (filters.planType) params.append('plan_type', filters.planType);
@@ -596,7 +606,6 @@ export const validateSamplingPlanNo = async (planNo, excludeId = null) => {
     return { isUnique: !exists };
   }
 
-
   try {
     const result = await apiFetch(`${ENDPOINTS.samplingPlans}?search=${encodeURIComponent(planNo)}`);
     const matches = (result.data || []).filter(p => {
@@ -630,6 +639,9 @@ export const calculateSampleFromApi = async (planId, lotSize) => {
 };
 
 
+// =============================================================================
+// Quality Plan CRUD
+// =============================================================================
 export const fetchQualityPlans = async (filters = {}) => {
   logApiCall('GET', ENDPOINTS.qcPlans, filters);
 
@@ -648,7 +660,6 @@ export const fetchQualityPlans = async (filters = {}) => {
   }
 
   const params = new URLSearchParams();
-
   if (filters.status !== 'all') params.append('is_active', 'true');
   if (filters.status && filters.status !== 'all') params.append('status', filters.status);
   if (filters.search) params.append('search', filters.search);
@@ -769,12 +780,14 @@ export const validateQCPlanNo = async (planNo, excludeId = null) => {
     });
     return { isUnique: matches.length === 0 };
   } catch {
-
     return { isUnique: true };
   }
 };
 
 
+// =============================================================================
+// Lookups
+// =============================================================================
 export const fetchDepartments = async () => {
   logApiCall('GET', ENDPOINTS.departments);
 

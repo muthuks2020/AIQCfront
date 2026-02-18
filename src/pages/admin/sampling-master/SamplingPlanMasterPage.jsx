@@ -100,12 +100,35 @@ const SamplingPlanMasterPage = () => {
     setIsLoading(true);
     try {
       const response = await fetchSamplingPlanById(id);
-      console.log('[DEBUG loadSamplingPlan] Full response:', JSON.stringify(response, null, 2));
+      console.log('[EDIT-DEBUG] Raw response from fetchSamplingPlanById:', JSON.stringify(response, null, 2));
       if (response.success && response.data) {
-        console.log('[DEBUG loadSamplingPlan] samplePlanType from API:', response.data.samplePlanType);
-        console.log('[DEBUG loadSamplingPlan] typeof samplePlanType:', typeof response.data.samplePlanType);
-        console.log('[DEBUG loadSamplingPlan] iterations from API:', response.data.iterations);
-        setFormData(response.data);
+        const loadedData = { ...response.data };
+
+        // ── Defensive: ensure samplePlanType is uppercase SP1/SP2/SP3 ──
+        // The transformer should already do this, but guard against
+        // older deployed API code that may not have normalizePlanType
+        if (loadedData.samplePlanType) {
+          const upper = String(loadedData.samplePlanType).toUpperCase();
+          // Map any legacy values that slipped through
+          const legacyMap = {
+            'AQL_BASED': 'SP1', 'NORMAL': 'SP1', 'FIXED': 'SP0',
+            'TIGHTENED': 'SP2', 'REDUCED': 'SP2', 'CUSTOM': 'SP1',
+          };
+          loadedData.samplePlanType = legacyMap[upper] || (['SP0','SP1','SP2','SP3'].includes(upper) ? upper : 'SP1');
+        } else {
+          loadedData.samplePlanType = 'SP1';
+        }
+
+        // ── Defensive: ensure iterations is a number (1, 2, or 3) ──
+        loadedData.iterations = Number(loadedData.iterations) || 1;
+
+        console.log('[EDIT-DEBUG] Normalized formData:', {
+          samplePlanType: loadedData.samplePlanType,
+          iterations: loadedData.iterations,
+          samplePlanNo: loadedData.samplePlanNo,
+        });
+
+        setFormData(loadedData);
         setPlanNoValid(true);
       }
     } catch (error) {

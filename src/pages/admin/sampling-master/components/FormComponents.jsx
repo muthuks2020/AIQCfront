@@ -185,22 +185,27 @@ export const PlanTypeSelector = ({
   onChange,
   options = [],
 }) => {
+  console.log('[PlanTypeSelector] Current value:', value, '| type:', typeof value);
   return (
     <div className="sm-plan-type-grid">
-      {options.map(option => (
-        <div
-          key={option.value}
-          className={`sm-plan-type-card ${String(value).toUpperCase() === String(option.value).toUpperCase() ? 'sm-selected' : ''}`}
-          onClick={() => onChange({ target: { name: 'samplePlanType', value: option.value } })}
-        >
-          <div className="sm-plan-type-icon">{option.icon}</div>
-          <div className="sm-plan-type-name">{option.label}</div>
-          <div className="sm-plan-type-desc">{option.description}</div>
-          <div className="sm-plan-type-check">
-            <Check size={16} />
+      {options.map(option => {
+        const isSelected = String(value || '').toUpperCase() === String(option.value || '').toUpperCase();
+        console.log(`[PlanTypeSelector] Comparing "${String(value || '').toUpperCase()}" === "${String(option.value || '').toUpperCase()}" → ${isSelected}`);
+        return (
+          <div
+            key={option.value}
+            className={`sm-plan-type-card ${isSelected ? 'sm-selected' : ''}`}
+            onClick={() => onChange({ target: { name: 'samplePlanType', value: option.value } })}
+          >
+            <div className="sm-plan-type-icon">{option.icon}</div>
+            <div className="sm-plan-type-name">{option.label}</div>
+            <div className="sm-plan-type-desc">{option.description}</div>
+            <div className="sm-plan-type-check">
+              <Check size={16} />
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
@@ -210,6 +215,7 @@ export const IterationSelector = ({
   value,
   onChange,
 }) => {
+  console.log('[IterationSelector] Current value:', value, '| type:', typeof value, '| Number():', Number(value));
   const iterations = [
     { value: 1, label: 'Single', desc: 'Normal sampling' },
     { value: 2, label: 'Double', desc: 'Re-inspection available' },
@@ -218,17 +224,20 @@ export const IterationSelector = ({
 
   return (
     <div className="sm-iteration-grid">
-      {iterations.map(iter => (
-        <div
-          key={iter.value}
-          className={`sm-iteration-card ${Number(value) === iter.value ? 'sm-selected' : ''}`}
-          onClick={() => onChange({ target: { name: 'iterations', value: iter.value } })}
-        >
-          <div className="sm-iteration-number">{iter.value}</div>
-          <div className="sm-iteration-label">{iter.label}</div>
-          <div className="sm-iteration-desc">{iter.desc}</div>
-        </div>
-      ))}
+      {iterations.map(iter => {
+        const isSelected = Number(value) === iter.value;
+        return (
+          <div
+            key={iter.value}
+            className={`sm-iteration-card ${isSelected ? 'sm-selected' : ''}`}
+            onClick={() => onChange({ target: { name: 'iterations', value: iter.value } })}
+          >
+            <div className="sm-iteration-number">{iter.value}</div>
+            <div className="sm-iteration-label">{iter.label}</div>
+            <div className="sm-iteration-desc">{iter.desc}</div>
+          </div>
+        );
+      })}
     </div>
   );
 };
