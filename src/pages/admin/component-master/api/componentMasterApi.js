@@ -864,11 +864,13 @@ export const uploadAttachment = async (file, componentId, fieldName) => {
 
 
   const docTypeMap = {
-    drawingAttachment: 'drawing',
-    testCertFile:      'test_cert',
-    specFile:          'specification',
-    fqirFile:          'fqir',
-    cocFile:           'coc',
+    drawingAttachment:   'drawing',
+    testCertFile:        'test_cert',
+    specFile:            'specification',
+    fqirFile:            'fqir',
+    cocFile:             'coc',
+    visualSpecSheet:     'visual_spec_sheet',
+    functionalSpecSheet: 'functional_spec_sheet',
   };
 
   const formData = new FormData();

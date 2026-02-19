@@ -59,6 +59,7 @@ const cs = {
   secBody:{padding:'12px 14px'},
   g2:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10},
   g3:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10},
+  g4:{display:'grid',gridTemplateColumns:'repeat(4, 1fr)',gap:10},
   mt8:{marginTop:8},
   lbl:{display:'block',fontSize:10,fontWeight:600,color:T.textSec,marginBottom:3,textTransform:'uppercase',letterSpacing:'.04em'},
   req:{color:T.danger,marginLeft:2},
@@ -132,6 +133,8 @@ const ComponentMasterEntryPage = () => {
   const [visualCollapsed, setVisualCollapsed] = useState(false);
   const [functionalCollapsed, setFunctionalCollapsed] = useState(false);
   const [showParamSummary, setShowParamSummary] = useState(false);
+  const [visualSpecSheet, setVisualSpecSheet] = useState(null);
+  const [functionalSpecSheet, setFunctionalSpecSheet] = useState(null);
 
   const [categories, setCategories] = useState([]);
   const [samplingPlans, setSamplingPlans] = useState([]);
@@ -213,6 +216,32 @@ const ComponentMasterEntryPage = () => {
         });
         if (Object.keys(upd).length) setFormData(prev => ({ ...prev, ...upd }));
       }
+
+      // Load spec sheet documents for checking parameters
+      if (comp.documents && comp.documents.length > 0) {
+        comp.documents.forEach(d => {
+          if (d.documentType === 'visual_spec_sheet') {
+            setVisualSpecSheet({
+              name: d.originalName || d.fileName,
+              size: d.fileSize || 0,
+              type: d.mimeType || 'application/pdf',
+              _isExisting: true,
+              _docId: d.id,
+              _filePath: d.filePath,
+            });
+          }
+          if (d.documentType === 'functional_spec_sheet') {
+            setFunctionalSpecSheet({
+              name: d.originalName || d.fileName,
+              size: d.fileSize || 0,
+              type: d.mimeType || 'application/pdf',
+              _isExisting: true,
+              _docId: d.id,
+              _filePath: d.filePath,
+            });
+          }
+        });
+      }
     } catch (e) {
       console.error('Failed to load component:', e);
       alert('Failed to load component data: ' + e.message);
@@ -287,6 +316,41 @@ const ComponentMasterEntryPage = () => {
     setErrors(p => clearFieldError(p, field));
   };
 
+  const handleSpecSheetUpload = (type) => {
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = '.pdf';
+    inp.onchange = (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      if (f.size / 1048576 > 5) {
+        alert('Spec sheet must be less than 5MB');
+        return;
+      }
+      if (!f.name.toLowerCase().endsWith('.pdf')) {
+        alert('Only PDF files are allowed for spec sheets');
+        return;
+      }
+      if (type === 'visual') setVisualSpecSheet(f);
+      else setFunctionalSpecSheet(f);
+    };
+    inp.click();
+  };
+
+  const handleSpecSheetRemove = async (type) => {
+    const current = type === 'visual' ? visualSpecSheet : functionalSpecSheet;
+    if (current && current._isExisting && current._docId) {
+      try {
+        await deleteDocument(current._docId);
+        setExistingDocuments(p => p.filter(d => d.id !== current._docId));
+      } catch (x) {
+        console.error('Error deleting spec sheet:', x);
+      }
+    }
+    if (type === 'visual') setVisualSpecSheet(null);
+    else setFunctionalSpecSheet(null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const { isValid, errors: ve } = validateForm(formData);
@@ -328,6 +392,15 @@ const ComponentMasterEntryPage = () => {
             try { await uploadAttachment(fv, cid, fn); } catch (x) { console.error(`Upload ${fn}:`, x); }
           }
         }
+        // Upload spec sheet PDFs for checking parameters
+        if (visualSpecSheet && visualSpecSheet instanceof File) {
+          try { await uploadAttachment(visualSpecSheet, cid, 'visualSpecSheet'); }
+          catch (x) { console.error('Upload visualSpecSheet:', x); }
+        }
+        if (functionalSpecSheet && functionalSpecSheet instanceof File) {
+          try { await uploadAttachment(functionalSpecSheet, cid, 'functionalSpecSheet'); }
+          catch (x) { console.error('Upload functionalSpecSheet:', x); }
+        }
       }
     } catch (err) {
       console.error(`Error ${isEditing ? 'updating' : 'creating'}:`, err);
@@ -346,6 +419,7 @@ const ComponentMasterEntryPage = () => {
     setVisualParams([{ id: 1, checkingPoint: '', unit: '', specification: '', instrumentName: '' }]);
     setFunctionalParams([{ id: 1, checkingPoint: '', unit: 'mm', specification: '', instrumentName: '', toleranceMin: '', toleranceMax: '' }]);
     setVisualCollapsed(false); setFunctionalCollapsed(false); setShowParamSummary(false);
+    setVisualSpecSheet(null); setFunctionalSpecSheet(null);
   };
 
   const handleCreateAnother = () => { setShowSuccess(false); handleReset(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
@@ -419,7 +493,7 @@ const ComponentMasterEntryPage = () => {
             </div>
             <div style={cs.secBody}>
               <CategorySelector categories={categories} value={formData.productCategory} onChange={handleChange} error={touched.productCategory && errors.productCategory} required />
-              <div style={{...cs.g3,...cs.mt8}}>
+              <div style={{...cs.g4,...cs.mt8}}>
                 <div><label style={cs.lbl}>QC Plan<span style={cs.req}>*</span></label>
                   <FormSelect name="qcPlanNo" value={formData.qcPlanNo} onChange={handleChange} options={qcPlans.map(p=>({value:p.id,label:`${p.id} - ${p.name}`}))} placeholder="Select QC plan" error={touched.qcPlanNo&&errors.qcPlanNo} onBlur={handleBlur} required loading={loadingQCPlans} /></div>
                 <div><label style={cs.lbl}>Part Code<span style={cs.req}>*</span></label>
@@ -427,10 +501,6 @@ const ComponentMasterEntryPage = () => {
                     suffix={partCodeChecking?<RefreshCw size={11} className="cm-spin" style={{color:'#2196F3'}}/>:partCodeValid?<CheckCircle size={11} style={{color:'#4CAF50'}}/>:null} /></div>
                 <div><label style={cs.lbl}>Part Name<span style={cs.req}>*</span></label>
                   <FormInput name="partName" value={formData.partName} onChange={handleChange} onBlur={handleBlur} error={touched.partName&&errors.partName} required placeholder="e.g., CHANNEL FRAME" /></div>
-              </div>
-              <div style={{...cs.g2,...cs.mt8}}>
-                <div><label style={cs.lbl}>Drawing No</label>
-                  <FormInput name="drawingNo" value={formData.drawingNo} onChange={handleChange} onBlur={handleBlur} error={touched.drawingNo&&errors.drawingNo} placeholder="e.g., DWG-001-R3" /></div>
                 <div><label style={cs.lbl}>Source Type</label>
                   <FormSelect name="prProcessCode" value={formData.prProcessCode} onChange={handleChange}
                     options={[{value:'direct_purchase_external',label:'Direct Purchase – External'},{value:'direct_purchase_internal',label:'Direct Purchase – Internal'},{value:'job_work_internal',label:'Job Work – Internal'},{value:'job_work_external',label:'Job Work – External/Subcontract'}]}
@@ -468,6 +538,10 @@ const ComponentMasterEntryPage = () => {
                 <div style={cs.specCb(formData.specRequired)}>{formData.specRequired&&<Check size={9} color="#fff" strokeWidth={3}/>}</div>
                 <div><div style={{fontSize:11,fontWeight:600,color:T.text}}>Specification Document Required</div>
                 <div style={{fontSize:10,color:T.textMuted}}>Detailed spec must be attached</div></div>
+              </div>
+              <div style={{maxWidth:380,marginBottom:10}}>
+                <label style={cs.lbl}>Drawing No</label>
+                <FormInput name="drawingNo" value={formData.drawingNo} onChange={handleChange} onBlur={handleBlur} error={touched.drawingNo&&errors.drawingNo} placeholder="e.g., DWG-001-R3" />
               </div>
               <div style={cs.g2}>
                 <div style={cs.upZone} onClick={()=>handleDirectUpload('drawingAttachment','.pdf,.png,.jpg,.jpeg,.dwg')}>
@@ -540,6 +614,48 @@ const ComponentMasterEntryPage = () => {
               {visualEnabled&&(<>
                 <div style={cs.pHdr}>
                   <div style={cs.pTitle}><Eye size={13} color={T.primary}/><span>Visual Parameters</span><span style={cs.pCnt}>{visualParams.length}</span></div>
+
+                  {/* ── Spec Sheet Upload (Visual) ── */}
+                  {!visualSpecSheet ? (
+                    <button type="button" onClick={() => handleSpecSheetUpload('visual')}
+                      style={{
+                        display:'inline-flex',alignItems:'center',gap:4,
+                        padding:'4px 10px',fontSize:10,fontWeight:500,
+                        border:`1px dashed ${T.primary}`,borderRadius:T.radius,
+                        background:'#fff',color:T.primary,cursor:'pointer',
+                        whiteSpace:'nowrap',
+                      }}>
+                      <Upload size={11}/> Upload Spec Sheet (PDF)
+                    </button>
+                  ) : (
+                    <div style={{
+                      display:'inline-flex',alignItems:'center',gap:6,
+                      padding:'3px 8px 3px 10px',fontSize:10,fontWeight:500,
+                      border:`1px solid ${T.success}`,borderRadius:T.radius,
+                      background:T.successBg,color:T.success,
+                      maxWidth:260,
+                    }}>
+                      <FileIcon size={11}/>
+                      <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:140}}
+                        title={visualSpecSheet.name}>
+                        {visualSpecSheet.name}
+                      </span>
+                      {visualSpecSheet._isExisting && (
+                        <span style={{fontSize:8,fontWeight:700,opacity:0.7}}>SAVED</span>
+                      )}
+                      <button type="button" onClick={() => handleSpecSheetRemove('visual')}
+                        title="Remove & Reupload"
+                        style={{
+                          display:'flex',alignItems:'center',justifyContent:'center',
+                          width:18,height:18,borderRadius:'50%',border:'none',
+                          background:'rgba(220,38,38,0.1)',color:T.danger,cursor:'pointer',
+                          marginLeft:2,padding:0,flexShrink:0,
+                        }}>
+                        <Trash2 size={10}/>
+                      </button>
+                    </div>
+                  )}
+
                   <div style={{display:'flex',gap:5,alignItems:'center'}}>
                     <button type="button" style={cs.pAdd} onClick={addVP}><Plus size={11}/> Add</button>
                     <button type="button" style={cs.colBtn} onClick={()=>setVisualCollapsed(!visualCollapsed)}>{visualCollapsed?<ChevronDown size={15}/>:<ChevronUp size={15}/>}</button>
@@ -569,6 +685,48 @@ const ComponentMasterEntryPage = () => {
               {functionalEnabled&&(<>
                 <div style={cs.pHdr}>
                   <div style={cs.pTitle}><Wrench size={13} color={T.primary}/><span>Functional Parameters</span><span style={cs.pCnt}>{functionalParams.length}</span></div>
+
+                  {/* ── Spec Sheet Upload (Functional) ── */}
+                  {!functionalSpecSheet ? (
+                    <button type="button" onClick={() => handleSpecSheetUpload('functional')}
+                      style={{
+                        display:'inline-flex',alignItems:'center',gap:4,
+                        padding:'4px 10px',fontSize:10,fontWeight:500,
+                        border:`1px dashed ${T.primary}`,borderRadius:T.radius,
+                        background:'#fff',color:T.primary,cursor:'pointer',
+                        whiteSpace:'nowrap',
+                      }}>
+                      <Upload size={11}/> Upload Spec Sheet (PDF)
+                    </button>
+                  ) : (
+                    <div style={{
+                      display:'inline-flex',alignItems:'center',gap:6,
+                      padding:'3px 8px 3px 10px',fontSize:10,fontWeight:500,
+                      border:`1px solid ${T.success}`,borderRadius:T.radius,
+                      background:T.successBg,color:T.success,
+                      maxWidth:260,
+                    }}>
+                      <FileIcon size={11}/>
+                      <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:140}}
+                        title={functionalSpecSheet.name}>
+                        {functionalSpecSheet.name}
+                      </span>
+                      {functionalSpecSheet._isExisting && (
+                        <span style={{fontSize:8,fontWeight:700,opacity:0.7}}>SAVED</span>
+                      )}
+                      <button type="button" onClick={() => handleSpecSheetRemove('functional')}
+                        title="Remove & Reupload"
+                        style={{
+                          display:'flex',alignItems:'center',justifyContent:'center',
+                          width:18,height:18,borderRadius:'50%',border:'none',
+                          background:'rgba(220,38,38,0.1)',color:T.danger,cursor:'pointer',
+                          marginLeft:2,padding:0,flexShrink:0,
+                        }}>
+                        <Trash2 size={10}/>
+                      </button>
+                    </div>
+                  )}
+
                   <div style={{display:'flex',gap:5,alignItems:'center'}}>
                     <button type="button" style={cs.pAdd} onClick={addFP}><Plus size={11}/> Add</button>
                     <button type="button" style={cs.colBtn} onClick={()=>setFunctionalCollapsed(!functionalCollapsed)}>{functionalCollapsed?<ChevronDown size={15}/>:<ChevronUp size={15}/>}</button>
