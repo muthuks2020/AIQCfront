@@ -318,7 +318,10 @@ const QualityPlanConfigPage = () => {
   const isEditing = Boolean(id);
 
 
-  const [formData, setFormData] = useState(getInitialQualityPlanState());
+  const [formData, setFormData] = useState(() => ({
+    ...getInitialQualityPlanState(),
+    stages: [createDefaultStage(1)],
+  }));
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -600,7 +603,10 @@ const QualityPlanConfigPage = () => {
 
   const handleReset = () => {
     if (window.confirm('Are you sure you want to reset the form?')) {
-      setFormData(getInitialQualityPlanState());
+      setFormData({
+        ...getInitialQualityPlanState(),
+        stages: [createDefaultStage(1)],
+      });
       setErrors({});
       setTouched({});
       setPlanNoValid(false);
@@ -616,7 +622,10 @@ const QualityPlanConfigPage = () => {
 
   const handleCreateAnother = () => {
     setShowSuccess(false);
-    setFormData(getInitialQualityPlanState());
+    setFormData({
+      ...getInitialQualityPlanState(),
+      stages: [createDefaultStage(1)],
+    });
     setErrors({});
     setTouched({});
     setPlanNoValid(false);
