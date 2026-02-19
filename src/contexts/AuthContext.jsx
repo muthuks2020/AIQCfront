@@ -1,5 +1,4 @@
-// Authentication Context
-// Manages user authentication state, roles, and provides SSO integration hooks
+
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 

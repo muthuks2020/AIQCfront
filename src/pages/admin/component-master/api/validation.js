@@ -3,10 +3,7 @@ export const VALIDATION_RULES = {
     required: true,
     message: 'Please select a product category',
   },
-  productGroup: {
-    required: true,
-    message: 'Please select a product group',
-  },
+  // productGroup removed per feedback (Ref: 7.3.0 DB-02)
   partCode: {
     required: true,
     minLength: 3,
@@ -153,7 +150,7 @@ export const validateFile = (file, options = {}) => {
 
 export const getInitialFormState = () => ({
   productCategory: '',
-  productGroup: '',
+  // productGroup removed per feedback (Ref: 7.3.0 DB-02)
   partCode: '',
   partName: '',
   qcPlanNo: '',
@@ -161,18 +158,17 @@ export const getInitialFormState = () => ({
   samplingPlan: '',
   drawingNo: '',
   drawingAttachment: null,
-  testCertFile: null,
+  // testCertFile removed per feedback
   specFile: null,
-  fqirFile: null,
-  testCertRequired: false,
+  // fqirFile removed per feedback
+  // testCertRequired removed per feedback
   specRequired: false,
-  fqirRequired: false,
-  prProcessCode: 'direct_purchase',
+  // fqirRequired removed per feedback
+  prProcessCode: 'direct_purchase_external',
 });
 
 export const getInitialErrorState = () => ({
   productCategory: null,
-  productGroup: null,
   partCode: null,
   partName: null,
   qcPlanNo: null,
@@ -180,9 +176,7 @@ export const getInitialErrorState = () => ({
   samplingPlan: null,
   drawingNo: null,
   drawingAttachment: null,
-  testCertFile: null,
   specFile: null,
-  fqirFile: null,
   prProcessCode: null,
 });
 

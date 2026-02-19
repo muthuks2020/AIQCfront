@@ -30,7 +30,11 @@ const mockPendingJobs = [
     "failedCheckpoints": 0,
     "status": "approved",
     "priority": "normal",
-    "notes": "All checkpoints passed. Visual inspection completed."
+    "notes": "All checkpoints passed. Visual inspection completed.",
+    "grnDate": "2025-12-27",
+    "vendorInvoiceNo": "INV-2025-0350",
+    "vendorDate": "2025-12-26",
+    "serviceDate": null
   },
   {
     "id": "INS-2026-0302",
@@ -45,7 +49,11 @@ const mockPendingJobs = [
     "failedCheckpoints": 0,
     "status": "approved",
     "priority": "high",
-    "notes": "Comprehensive dimensional inspection completed. All 18 measurement checkpoints within tolerance."
+    "notes": "Comprehensive dimensional inspection completed. All 18 measurement checkpoints within tolerance.",
+    "grnDate": "2026-01-14",
+    "vendorInvoiceNo": "INV-RCNA-2026-001",
+    "vendorDate": "2026-01-13",
+    "serviceDate": null
   },
   {
     "id": "INS-2026-0352",
@@ -60,7 +68,11 @@ const mockPendingJobs = [
     "failedCheckpoints": 0,
     "status": "approved",
     "priority": "normal",
-    "notes": "Packaging material inspection. Dimensions and ply count verified."
+    "notes": "Packaging material inspection. Dimensions and ply count verified.",
+    "grnDate": "2026-01-09",
+    "vendorInvoiceNo": "INV-RCNA-2026-011",
+    "vendorDate": "2026-01-08",
+    "serviceDate": null
   },
   {
     "id": "VAL-004",
@@ -75,7 +87,11 @@ const mockPendingJobs = [
     "failedCheckpoints": 0,
     "status": "approved",
     "priority": "normal",
-    "notes": "Visual inspection for bearing part number and damage check completed."
+    "notes": "Visual inspection for bearing part number and damage check completed.",
+    "grnDate": "2025-11-26",
+    "vendorInvoiceNo": "INV-RCNA-2025-034",
+    "vendorDate": "2025-11-25",
+    "serviceDate": null
   },
   {
     "id": "INS-2026-0353",
@@ -90,7 +106,11 @@ const mockPendingJobs = [
     "failedCheckpoints": 0,
     "status": "approved",
     "priority": "high",
-    "notes": "Precision dimensional inspection completed. All measurements within specified tolerances."
+    "notes": "Precision dimensional inspection completed. All measurements within specified tolerances.",
+    "grnDate": "2026-01-13",
+    "vendorInvoiceNo": "INV-RCNA-2026-035",
+    "vendorDate": "2026-01-12",
+    "serviceDate": null
   },
   {
     "id": "INS-2026-0354",
@@ -105,7 +125,11 @@ const mockPendingJobs = [
     "failedCheckpoints": 0,
     "status": "approved",
     "priority": "normal",
-    "notes": "Artwork verification and visual inspection completed."
+    "notes": "Artwork verification and visual inspection completed.",
+    "grnDate": "2025-11-13",
+    "vendorInvoiceNo": "INV-RCNA-2025-104",
+    "vendorDate": "2025-11-12",
+    "serviceDate": null
   },
   {
     "id": "VAL-007",
@@ -120,7 +144,11 @@ const mockPendingJobs = [
     "failedCheckpoints": 0,
     "status": "approved",
     "priority": "normal",
-    "notes": "Washer dimensional inspection - inner/outer diameter and thickness verified."
+    "notes": "Washer dimensional inspection - inner/outer diameter and thickness verified.",
+    "grnDate": "2026-01-09",
+    "vendorInvoiceNo": "INV-RSFA-2026-061",
+    "vendorDate": "2026-01-08",
+    "serviceDate": null
   },
   {
     "id": "VAL-008",
@@ -135,7 +163,11 @@ const mockPendingJobs = [
     "failedCheckpoints": 0,
     "status": "approved",
     "priority": "normal",
-    "notes": "Electrical wire coil specification and damage check completed."
+    "notes": "Electrical wire coil specification and damage check completed.",
+    "grnDate": "2026-01-19",
+    "vendorInvoiceNo": "INV-EEWA-2026-029",
+    "vendorDate": "2026-01-18",
+    "serviceDate": null
   },
   {
     "id": "INS-2026-0228",
@@ -150,7 +182,11 @@ const mockPendingJobs = [
     "failedCheckpoints": 0,
     "status": "approved",
     "priority": "high",
-    "notes": "Electrical output voltage testing completed. All voltage outputs within tolerance."
+    "notes": "Electrical output voltage testing completed. All voltage outputs within tolerance.",
+    "grnDate": "2026-01-13",
+    "vendorInvoiceNo": "INV-EETD-2026-034",
+    "vendorDate": "2026-01-12",
+    "serviceDate": null
   },
   {
     "id": "INS-2026-0276",
@@ -165,7 +201,11 @@ const mockPendingJobs = [
     "failedCheckpoints": 0,
     "status": "approved",
     "priority": "high",
-    "notes": "Metal base plate dimensional inspection. All measurements verified."
+    "notes": "Metal base plate dimensional inspection. All measurements verified.",
+    "grnDate": "2026-01-14",
+    "vendorInvoiceNo": "INV-RUBA-2026-001",
+    "vendorDate": "2026-01-13",
+    "serviceDate": null
   },
   {
     id: 'JOB-003',
@@ -179,12 +219,18 @@ const mockPendingJobs = [
     status: 'pending',
     dueDate: '2026-02-05',
     checkpoints: 15,
+    grnDate: '2026-02-01',
+    vendorInvoiceNo: 'INV-TD-2026-0135',
+    vendorDate: '2026-01-30',
+    serviceDate: null,
   },
 ];
 
 const MakerDashboard = () => {
   const { user } = useAuth();
-  const [jobs, setJobs] = useState(mockPendingJobs);
+  const [jobs, setJobs] = useState(
+    [...mockPendingJobs].sort((a, b) => new Date(a.submittedAt || a.dueDate) - new Date(b.submittedAt || b.dueDate))
+  );
   const [filter, setFilter] = useState('all');
 
   const stats = [
@@ -333,6 +379,15 @@ const JobCard = ({ job, onStart }) => {
             <span><strong>Batch:</strong> {job.batchNo}</span>
             <span><strong>PO:</strong> {job.poNumber}</span>
             <span><strong>Vendor:</strong> {job.vendor}</span>
+            {job.grnDate && <span><strong>GRN Date:</strong> {formatDate(job.grnDate)}</span>}
+            {job.vendorInvoiceNo && <span><strong>Vendor Invoice:</strong> {job.vendorInvoiceNo}</span>}
+            {job.vendorDate && <span><strong>Vendor Date:</strong> {formatDate(job.vendorDate)}</span>}
+            {job.serviceDate && <span><strong>Service Date:</strong> {formatDate(job.serviceDate)}</span>}
+            {!job.grnDate && (
+              <span style={{ color: colors.danger, fontSize: '11px', fontWeight: 600 }}>
+                ⚠ GRN Date missing
+              </span>
+            )}
           </div>
         </div>
 

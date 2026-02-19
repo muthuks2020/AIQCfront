@@ -1,6 +1,4 @@
-// =============================================================================
-// Sampling Master API — Real API Integration
-// =============================================================================
+
 
 export const SAMPLING_API_CONFIG = {
   useMockData: false,
@@ -263,6 +261,8 @@ const transformers = {
     requiresFunctional: apiData.requires_functional ?? false,
     documentNumber:  apiData.document_number || '',
     status:          apiData.is_active !== false ? 'active' : 'inactive',
+    company:         apiData.company || '',
+    location:        apiData.location || '',
     createdAt:       apiData.created_at,
     updatedAt:       apiData.updated_at,
 
@@ -305,6 +305,8 @@ const transformers = {
     plan_code:        formData.qcPlanNo,
     plan_name:        formData.planName || formData.qcPlanNo,
     plan_type:        formData.planType || 'standard',
+    company:          formData.company || null,
+    location:         formData.location || null,
     category_id:      Number(formData.productId) || null,
     department_id:    Number(formData.departmentId) || null,
     revision:         formData.documentRevNo || '',

@@ -52,7 +52,8 @@ const MeasurementInput = ({
 
   const handleChange = (e) => {
     const inputValue = e.target.value;
-    if (inputValue === '' || /^-?\d*\.?\d*$/.test(inputValue)) {
+    // Allow empty, or numbers with max 2 decimal places
+    if (inputValue === '' || /^-?\d*\.?\d{0,2}$/.test(inputValue)) {
       onChange(inputValue === '' ? null : parseFloat(inputValue));
     }
   };

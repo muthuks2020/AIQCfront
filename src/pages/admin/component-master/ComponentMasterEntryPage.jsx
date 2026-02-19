@@ -1,84 +1,119 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  Package,
-  Layers,
-  FileText,
-  Settings,
-  Save,
-  X,
-  ArrowLeft,
-  RefreshCw,
-  CheckCircle,
-  Clipboard,
-  Shield,
-  Cog,
-  Zap,
-  Eye,
-  FlaskConical,
-  Lightbulb,
-  HelpCircle,
-  Plus,
-  Trash2,
-  Ruler,
-  Wrench,
-  Check,
-  AlertCircle,
-  ChevronDown,
-  ChevronUp,
+  Package, Layers, FileText, Save, ArrowLeft, RefreshCw,
+  CheckCircle, Shield, Zap, Eye, Plus, Trash2, Ruler, Wrench,
+  Check, AlertCircle, ChevronDown, ChevronUp, Upload, File as FileIcon,
 } from 'lucide-react';
-
 
 import { Header, Card } from '../../../components/common';
 import {
-  FormInput,
-  FormSelect,
-  FormToggle,
-  FormCheckboxCard,
-  FormFileUpload,
-  CategorySelector,
-  FormSection,
-  FormButton,
-  SuccessModal,
+  FormInput, FormSelect, FormToggle, FormCheckboxCard, FormFileUpload,
+  CategorySelector, FormSection, FormButton, SuccessModal,
 } from './components/FormComponents';
 
-
 import {
-  getProductCategories,
-  getProductGroups,
-  getSamplingPlans,
-  getQCPlans,
-  createComponent,
-  updateComponent,
-  getComponentById,
-  uploadAttachment,
-  deleteDocument,
+  getProductCategories, getSamplingPlans, getQCPlans,
+  getUnits, getInstruments,
+  createComponent, updateComponent, getComponentById,
+  uploadAttachment, deleteDocument,
   validatePartCode as apiValidatePartCode,
 } from './api/componentMasterApi';
 
 import {
-  validateField,
-  validateForm,
-  validatePartCodeUnique,
-  getInitialFormState,
-  getInitialErrorState,
-  debounce,
-  hasErrors,
-  clearFieldError,
-  setFieldError,
+  validateField, validateForm, validatePartCodeUnique,
+  getInitialFormState, getInitialErrorState, debounce,
+  hasErrors, clearFieldError, setFieldError,
 } from './api/validation';
 
-
 import './styles/ComponentMasterEntry.css';
-
-
 import { colors } from '../../../constants/theme';
 
+/* ═══ DESIGN TOKENS ═══ */
+const T = {
+  bg:'#f5f6f8',card:'#fff',border:'#e0e4ea',borderLt:'#edf0f5',
+  text:'#1a1f36',textSec:'#525f7f',textMuted:'#8898aa',
+  primary:'#1a56db',primaryBg:'#eef2ff',
+  success:'#059669',successBg:'#ecfdf5',
+  danger:'#dc2626',warning:'#d97706',warningBg:'#fffbeb',
+  radius:'6px',radiusLg:'8px',
+  shadow:'0 1px 2px rgba(0,0,0,.05)',
+};
+
+/* ═══ COMPACT STYLE OBJECTS ═══ */
+const cs = {
+  page:{minHeight:'100vh',background:T.bg,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"},
+  topBar:{background:'linear-gradient(135deg,#1e3a5f,#1a56db)',padding:'12px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',color:'#fff'},
+  topLeft:{display:'flex',alignItems:'center',gap:'10px'},
+  topIcon:{width:32,height:32,borderRadius:7,background:'rgba(255,255,255,.15)',display:'flex',alignItems:'center',justifyContent:'center'},
+  topTitle:{fontSize:15,fontWeight:700},topSub:{fontSize:11,opacity:.7},
+  topBtns:{display:'flex',gap:6},
+  topBtn:{padding:'5px 12px',fontSize:11,fontWeight:600,borderRadius:5,border:'1px solid rgba(255,255,255,.25)',background:'rgba(255,255,255,.1)',color:'#fff',cursor:'pointer',display:'flex',alignItems:'center',gap:5},
+  content:{padding:'14px 24px 24px',maxWidth:1180,margin:'0 auto'},
+  sec:{background:T.card,border:`1px solid ${T.border}`,borderRadius:T.radiusLg,boxShadow:T.shadow,marginBottom:10,overflow:'hidden'},
+  secH:{padding:'8px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:`1px solid ${T.borderLt}`,background:'#fafbfc'},
+  secHL:{display:'flex',alignItems:'center',gap:7},
+  secIcon:{width:26,height:26,borderRadius:5,background:T.primaryBg,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0},
+  secTitle:{fontSize:12,fontWeight:700,color:T.text},
+  secBadge:{fontSize:9,fontWeight:600,color:T.textMuted,background:'#f0f2f5',padding:'2px 7px',borderRadius:10,textTransform:'uppercase',letterSpacing:'.04em'},
+  secBody:{padding:'12px 14px'},
+  g2:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10},
+  g3:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10},
+  mt8:{marginTop:8},
+  lbl:{display:'block',fontSize:10,fontWeight:600,color:T.textSec,marginBottom:3,textTransform:'uppercase',letterSpacing:'.04em'},
+  req:{color:T.danger,marginLeft:2},
+  err:{fontSize:10,color:T.danger,marginTop:2},
+  togRow:{display:'flex',gap:6,marginBottom:8},
+  togBtn:(on)=>({flex:1,padding:'7px 10px',textAlign:'center',border:`1.5px solid ${on?T.primary:T.border}`,borderRadius:T.radius,cursor:'pointer',fontSize:12,fontWeight:600,background:on?T.primaryBg:'#fff',color:on?T.primary:T.textSec,transition:'all .15s'}),
+  ctRow:{display:'flex',gap:8,flexWrap:'wrap'},
+  ctCard:(on)=>({flex:'1 1 200px',padding:'9px 12px',border:`1.5px solid ${on?T.primary:T.border}`,borderRadius:T.radius,cursor:'pointer',background:on?T.primaryBg:'#fff',display:'flex',alignItems:'center',gap:9,transition:'all .15s'}),
+  ctCb:(on)=>({width:16,height:16,borderRadius:3,border:`2px solid ${on?T.primary:'#ccc'}`,background:on?T.primary:'#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}),
+  ctLbl:{fontSize:12,fontWeight:600,color:T.text},ctDesc:{fontSize:10,color:T.textMuted},
+  specChk:(on)=>({display:'inline-flex',alignItems:'center',gap:7,padding:'7px 12px',border:`1px solid ${on?T.primary:T.border}`,borderRadius:T.radius,cursor:'pointer',background:on?T.primaryBg:'#fff',marginBottom:10}),
+  specCb:(on)=>({width:15,height:15,borderRadius:3,border:`2px solid ${on?T.primary:'#bbb'}`,background:on?T.primary:'#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}),
+  upZone:{border:`1.5px dashed ${T.border}`,borderRadius:T.radius,padding:'10px 14px',textAlign:'center',cursor:'pointer',background:'#fafbfc'},
+  upLbl:{fontSize:11,color:T.textMuted,fontWeight:500},
+  docTbl:{width:'100%',borderCollapse:'separate',borderSpacing:0,fontSize:11,border:`1px solid ${T.border}`,borderRadius:T.radius,overflow:'hidden',marginTop:10},
+  docTh:{padding:'6px 10px',background:'#f7f8fa',fontWeight:600,color:T.textSec,borderBottom:`1px solid ${T.border}`,textAlign:'left',fontSize:9,textTransform:'uppercase',letterSpacing:'.04em'},
+  docTd:{padding:'7px 10px',borderBottom:`1px solid ${T.borderLt}`,verticalAlign:'middle'},
+  docName:{display:'flex',alignItems:'center',gap:5,fontWeight:500,color:T.text},
+  docBadge:(tp)=>{const m={drawing:{bg:'#eef2ff',c:'#4338ca'},specification:{bg:'#ecfdf5',c:'#059669'}};const x=m[tp]||{bg:'#f0f2f5',c:'#525f7f'};return{display:'inline-block',padding:'1px 7px',borderRadius:10,fontSize:9,fontWeight:600,background:x.bg,color:x.c,textTransform:'uppercase'};},
+  docRm:{padding:'3px 7px',border:`1px solid ${T.border}`,borderRadius:4,background:'#fff',color:T.danger,cursor:'pointer',fontSize:10,fontWeight:500,display:'flex',alignItems:'center',gap:3},
+  pHdr:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 0',marginTop:10},
+  pTitle:{display:'flex',alignItems:'center',gap:5,fontSize:11,fontWeight:700,color:T.text},
+  pCnt:{fontSize:10,color:T.textMuted,fontWeight:500,background:'#f0f2f5',padding:'1px 7px',borderRadius:10},
+  pAdd:{padding:'3px 9px',fontSize:10,fontWeight:600,border:`1px solid ${T.border}`,borderRadius:T.radius,background:'#fff',color:T.primary,cursor:'pointer',display:'flex',alignItems:'center',gap:3},
+  pTbl:{width:'100%',borderCollapse:'separate',borderSpacing:0,fontSize:11,border:`1px solid ${T.border}`,borderRadius:T.radius,overflow:'hidden'},
+  pTh:{padding:'5px 7px',background:'#f7f8fa',fontWeight:600,color:T.textSec,borderBottom:`1px solid ${T.border}`,textAlign:'left',fontSize:9,textTransform:'uppercase',letterSpacing:'.04em'},
+  pTd:{padding:'3px 5px',borderBottom:`1px solid ${T.borderLt}`,verticalAlign:'middle'},
+  pIn:{width:'100%',padding:'4px 7px',fontSize:11,border:`1px solid ${T.border}`,borderRadius:4,outline:'none',boxSizing:'border-box'},
+  pSel:{width:'100%',padding:'4px 5px',fontSize:11,border:`1px solid ${T.border}`,borderRadius:4,outline:'none',boxSizing:'border-box',background:'#fff'},
+  pDel:{padding:3,border:'none',background:'none',cursor:'pointer',borderRadius:4,display:'flex',alignItems:'center',justifyContent:'center'},
+  combBnr:{display:'flex',alignItems:'center',gap:7,padding:'7px 10px',background:T.warningBg,border:'1px solid #fde68a',borderRadius:T.radius,fontSize:11,color:T.warning,marginTop:8},
+  noHint:{display:'flex',alignItems:'center',gap:5,padding:'7px 10px',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:T.radius,fontSize:11,color:T.danger,marginTop:8},
+  sumBar:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 10px',background:T.successBg,border:'1px solid #a7f3d0',borderRadius:T.radius,cursor:'pointer',marginTop:10},
+  sumTitle:{display:'flex',alignItems:'center',gap:5,fontSize:11,fontWeight:600,color:T.success},
+  sumPill:(tp)=>({display:'inline-flex',alignItems:'center',gap:2,padding:'1px 7px',borderRadius:10,fontSize:9,fontWeight:600,background:tp==='visual'?'#eef2ff':'#fef3c7',color:tp==='visual'?'#4338ca':'#92400e'}),
+  sumTbl:{width:'100%',borderCollapse:'collapse',fontSize:10,marginTop:6},
+  sumTh:{padding:'4px 7px',background:'#f0fdf4',fontWeight:600,color:T.textSec,borderBottom:'1px solid #d1fae5',textAlign:'left',fontSize:9},
+  sumTd:{padding:'3px 7px',borderBottom:'1px solid #ecfdf5'},
+  ftr:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',borderTop:`1px solid ${T.border}`,background:'#fafbfc'},
+  ftrR:{display:'flex',gap:7},
+  btnO:{padding:'6px 14px',fontSize:11,fontWeight:600,border:`1px solid ${T.border}`,borderRadius:T.radius,background:'#fff',color:T.textSec,cursor:'pointer',display:'flex',alignItems:'center',gap:5},
+  btnP:{padding:'6px 16px',fontSize:11,fontWeight:600,border:'none',borderRadius:T.radius,background:T.primary,color:'#fff',cursor:'pointer',display:'flex',alignItems:'center',gap:5},
+  btnG:{padding:'6px 10px',fontSize:11,fontWeight:500,border:'none',borderRadius:T.radius,background:'transparent',color:T.textMuted,cursor:'pointer',display:'flex',alignItems:'center',gap:5},
+  colBtn:{padding:'2px 5px',border:'none',background:'none',cursor:'pointer',color:T.textMuted,display:'flex',alignItems:'center'},
+};
+
+const fmtSize=(b)=>{if(!b)return'—';if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB';};
+const docTypeLabel={drawingAttachment:'Drawing',specFile:'Specification'};
+const docTypeKey={drawingAttachment:'drawing',specFile:'specification'};
+
+/* ═══ COMPONENT ═══ */
 const ComponentMasterEntryPage = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = Boolean(id);
-
 
   const [formData, setFormData] = useState(getInitialFormState());
   const [errors, setErrors] = useState(getInitialErrorState());
@@ -90,1205 +125,548 @@ const ComponentMasterEntryPage = () => {
   const [partCodeValid, setPartCodeValid] = useState(false);
   const [existingDocuments, setExistingDocuments] = useState([]);
 
-
-  const [visualEnabled, setVisualEnabled] = useState(false);
+  const [visualEnabled, setVisualEnabled] = useState(true);
   const [functionalEnabled, setFunctionalEnabled] = useState(false);
-  const [visualParams, setVisualParams] = useState([
-    { id: 1, checkingPoint: '', unit: '', specification: '', instrumentName: '' }
-  ]);
-  const [functionalParams, setFunctionalParams] = useState([
-    { id: 1, checkingPoint: '', unit: 'mm', specification: '', instrumentName: '', toleranceMin: '', toleranceMax: '' }
-  ]);
+  const [visualParams, setVisualParams] = useState([{ id: 1, checkingPoint: '', unit: '', specification: '', instrumentName: '' }]);
+  const [functionalParams, setFunctionalParams] = useState([{ id: 1, checkingPoint: '', unit: 'mm', specification: '', instrumentName: '', toleranceMin: '', toleranceMax: '' }]);
   const [visualCollapsed, setVisualCollapsed] = useState(false);
   const [functionalCollapsed, setFunctionalCollapsed] = useState(false);
   const [showParamSummary, setShowParamSummary] = useState(false);
 
-
   const [categories, setCategories] = useState([]);
-  const [productGroups, setProductGroups] = useState([]);
   const [samplingPlans, setSamplingPlans] = useState([]);
   const [qcPlans, setQCPlans] = useState([]);
-
-
+  const [apiUnits, setApiUnits] = useState([]);
+  const [apiInstruments, setApiInstruments] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
-  const [loadingGroups, setLoadingGroups] = useState(false);
   const [loadingSamplingPlans, setLoadingSamplingPlans] = useState(true);
   const [loadingQCPlans, setLoadingQCPlans] = useState(true);
 
-
   useEffect(() => {
-    const loadMasterData = async () => {
+    (async () => {
       try {
-
         setLoadingCategories(true);
-        const categoriesData = await getProductCategories();
-        setCategories(categoriesData);
+        setCategories(await getProductCategories());
         setLoadingCategories(false);
-
-
         setLoadingSamplingPlans(true);
-        const samplingData = await getSamplingPlans();
-        setSamplingPlans(samplingData);
+        setSamplingPlans(await getSamplingPlans());
         setLoadingSamplingPlans(false);
-
-
         setLoadingQCPlans(true);
-        const qcData = await getQCPlans();
-        setQCPlans(qcData);
+        setQCPlans(await getQCPlans());
         setLoadingQCPlans(false);
-      } catch (error) {
-        console.error('Error loading master data:', error);
-      }
-    };
-
-    loadMasterData();
+        try { setApiUnits(await getUnits()); } catch (x) { console.warn('Units lookup failed:', x); }
+        try { setApiInstruments(await getInstruments()); } catch (x) { console.warn('Instruments lookup failed:', x); }
+      } catch (e) { console.error('Error loading master data:', e); }
+    })();
   }, []);
 
-
-  // =========================================================================
-  // Load existing component when editing
-  // =========================================================================
-  useEffect(() => {
-    if (isEditing && id) {
-      loadComponent();
-    }
-  }, [id]);
+  useEffect(() => { if (isEditing && id) loadComponent(); }, [id]);
 
   const loadComponent = async () => {
     setIsLoading(true);
     try {
       const comp = await getComponentById(id);
-
-      // Populate form fields from component data
-      setFormData(prev => ({
-        ...prev,
-        partCode: comp.partCode || '',
-        partName: comp.partName || '',
+      setFormData(prev => ({ ...prev,
+        partCode: comp.partCode || '', partName: comp.partName || '',
         partDescription: comp.partDescription || '',
         productCategory: comp.productCategoryId || comp.productCategory || '',
-        productGroup: comp.productGroupId || comp.productGroup || '',
+        // productGroup removed per feedback (Ref: 7.3.0 DB-02)
         inspectionType: comp.inspectionType === '100_percent' ? '100%' : (comp.inspectionType || 'sampling'),
         samplingPlan: comp.samplingPlanId || comp.samplingPlan || '',
         qcPlanNo: comp.qcPlanId || comp.qcPlanNo || '',
         drawingNo: comp.drawingNo || '',
         prProcessCode: comp.prProcessCode || '',
-        testCertRequired: comp.testCertRequired || false,
+        // testCertRequired removed per feedback
         specRequired: comp.specRequired || false,
-        fqirRequired: comp.fqirRequired || false,
+        // fqirRequired removed per feedback
         skipLotEnabled: comp.skipLotEnabled || false,
         skipLotCount: comp.skipLotCount || '',
         skipLotThreshold: comp.skipLotThreshold || '',
       }));
-
       setPartCodeValid(true);
 
-      // Load product groups for the category
-      if (comp.productCategoryId || comp.productCategory) {
-        try {
-          const groups = await getProductGroups(comp.productCategoryId || comp.productCategory);
-          setProductGroups(groups);
-        } catch (e) {
-          console.error('Error loading groups:', e);
-        }
-      }
-
-      // Populate checking parameters
       if (comp.visualParams && comp.visualParams.length > 0) {
         setVisualEnabled(true);
         setVisualParams(comp.visualParams.map((p, i) => ({
-          id: p.id || i + 1,
-          checkingPoint: p.checkingPoint || '',
-          unit: p.unit || '',
-          specification: p.specification || '',
+          id: p.id || i + 1, checkingPoint: p.checkingPoint || '',
+          unit: p.unit || '', specification: p.specification || '',
           instrumentName: p.instrumentName || '',
         })));
       }
       if (comp.functionalParams && comp.functionalParams.length > 0) {
         setFunctionalEnabled(true);
         setFunctionalParams(comp.functionalParams.map((p, i) => ({
-          id: p.id || i + 1,
-          checkingPoint: p.checkingPoint || '',
-          unit: p.unit || 'mm',
-          specification: p.specification || '',
+          id: p.id || i + 1, checkingPoint: p.checkingPoint || '',
+          unit: p.unit || 'mm', specification: p.specification || '',
           instrumentName: p.instrumentName || '',
-          toleranceMin: p.toleranceMin || '',
-          toleranceMax: p.toleranceMax || '',
+          toleranceMin: p.toleranceMin || '', toleranceMax: p.toleranceMax || '',
         })));
       }
 
-      // Populate documents — create File-like objects for FormFileUpload display
       if (comp.documents && comp.documents.length > 0) {
         setExistingDocuments(comp.documents);
-
-        const docTypeToField = {
-          'drawing': 'drawingAttachment',
-          'test_cert': 'testCertFile',
-          'specification': 'specFile',
-          'fqir': 'fqirFile',
-        };
-
-        const fileUpdates = {};
-        comp.documents.forEach(doc => {
-          const fieldName = docTypeToField[doc.documentType];
-          if (fieldName) {
-            // Create a File-like object the FormFileUpload component can display
-            fileUpdates[fieldName] = {
-              name: doc.fileName,
-              size: doc.fileSize || 0,
-              type: doc.mimeType || 'application/octet-stream',
-              // Custom props to identify this as an existing server file
-              _isExisting: true,
-              _docId: doc.id,
-              _filePath: doc.filePath,
-            };
-          }
+        const map = { drawing: 'drawingAttachment', specification: 'specFile' };
+        const upd = {};
+        comp.documents.forEach(d => {
+          const f = map[d.documentType];
+          if (f) upd[f] = { name: d.fileName, size: d.fileSize || 0, type: d.mimeType || 'application/octet-stream', _isExisting: true, _docId: d.id, _filePath: d.filePath };
         });
-
-        if (Object.keys(fileUpdates).length > 0) {
-          setFormData(prev => ({ ...prev, ...fileUpdates }));
-        }
+        if (Object.keys(upd).length) setFormData(prev => ({ ...prev, ...upd }));
       }
-
-    } catch (error) {
-      console.error('Failed to load component:', error);
-      alert('Failed to load component data: ' + error.message);
+    } catch (e) {
+      console.error('Failed to load component:', e);
+      alert('Failed to load component data: ' + e.message);
       navigate('/admin/component-master');
-    } finally {
-      setIsLoading(false);
-    }
+    } finally { setIsLoading(false); }
   };
 
-
-  useEffect(() => {
-    if (formData.productCategory) {
-      const loadGroups = async () => {
-        setLoadingGroups(true);
-        try {
-          const groupsData = await getProductGroups(formData.productCategory);
-          setProductGroups(groupsData);
-        } catch (error) {
-          console.error('Error loading product groups:', error);
-        } finally {
-          setLoadingGroups(false);
-        }
-      };
-      loadGroups();
-    } else {
-      setProductGroups([]);
-    }
-  }, [formData.productCategory]);
-
-
   const checkPartCodeUnique = useCallback(
-    debounce(async (value) => {
-      if (!value || value.length < 3) return;
+    debounce(async (v) => {
+      if (!v || v.length < 3) return;
       setPartCodeChecking(true);
       try {
-        const result = await apiValidatePartCode(value);
-        setPartCodeValid(result.isUnique);
-        if (!result.isUnique) {
-          setErrors(prev => setFieldError(prev, 'partCode', 'This part code already exists'));
-        }
-      } catch (error) {
-        console.error('Part code validation error:', error);
-      } finally {
-        setPartCodeChecking(false);
-      }
-    }, 500),
-    []
+        const r = await apiValidatePartCode(v);
+        setPartCodeValid(r.isUnique);
+        if (!r.isUnique) setErrors(p => setFieldError(p, 'partCode', 'This part code already exists'));
+      } catch (e) { console.error('Part code validation error:', e); }
+      finally { setPartCodeChecking(false); }
+    }, 500), []
   );
-
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    const newValue = type === 'checkbox' ? checked : value;
-
-    setFormData(prev => ({
-      ...prev,
-      [name]: newValue,
-    }));
-
-
-    if (errors[name]) {
-      setErrors(prev => clearFieldError(prev, name));
-    }
-
-
-    if (name === 'partCode') {
-      setPartCodeValid(false);
-      checkPartCodeUnique(value);
-    }
-
-
+    const nv = type === 'checkbox' ? checked : value;
+    setFormData(p => ({ ...p, [name]: nv }));
+    if (errors[name]) setErrors(p => clearFieldError(p, name));
+    if (name === 'partCode') { setPartCodeValid(false); checkPartCodeUnique(value); }
     if (name === 'inspectionType' && value === '100%') {
-      setFormData(prev => ({ ...prev, samplingPlan: '' }));
-      setErrors(prev => clearFieldError(prev, 'samplingPlan'));
+      setFormData(p => ({ ...p, samplingPlan: '' }));
+      setErrors(p => clearFieldError(p, 'samplingPlan'));
     }
   };
 
   const handleBlur = (e) => {
     const { name, value } = e.target;
-    setTouched(prev => ({ ...prev, [name]: true }));
-
-
-    const error = validateField(name, value, formData);
-    if (error) {
-      setErrors(prev => setFieldError(prev, name, error));
-    }
+    setTouched(p => ({ ...p, [name]: true }));
+    const err = validateField(name, value, formData);
+    if (err) setErrors(p => setFieldError(p, name, err));
   };
 
   const handleFileChange = async (e) => {
     const { name, value, error } = e.target;
-
-    // If removing a file that was previously uploaded to the server, delete it
-    const currentFile = formData[name];
-    if (!value && currentFile && currentFile._isExisting && currentFile._docId) {
-      try {
-        await deleteDocument(currentFile._docId);
-        setExistingDocuments(prev => prev.filter(d => d.id !== currentFile._docId));
-      } catch (delErr) {
-        console.error('Error deleting document:', delErr);
-      }
+    const cur = formData[name];
+    if (!value && cur && cur._isExisting && cur._docId) {
+      try { await deleteDocument(cur._docId); setExistingDocuments(p => p.filter(d => d.id !== cur._docId)); }
+      catch (x) { console.error('Error deleting document:', x); }
     }
+    setFormData(p => ({ ...p, [name]: value }));
+    if (error) setErrors(p => setFieldError(p, name, error));
+    else setErrors(p => clearFieldError(p, name));
+  };
 
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (error) {
-      setErrors(prev => setFieldError(prev, name, error));
-    } else {
-      setErrors(prev => clearFieldError(prev, name));
+  const handleDirectUpload = (field, accept) => {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = accept;
+    inp.onchange = (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      const mx = field === 'drawingAttachment' ? 10 : 5;
+      if (f.size / 1048576 > mx) { setErrors(p => setFieldError(p, field, `File must be < ${mx}MB`)); return; }
+      setFormData(p => ({ ...p, [field]: f }));
+      setErrors(p => clearFieldError(p, field));
+    };
+    inp.click();
+  };
+
+  const handleRemoveFile = async (field) => {
+    const cur = formData[field];
+    if (cur && cur._isExisting && cur._docId) {
+      try { await deleteDocument(cur._docId); setExistingDocuments(p => p.filter(d => d.id !== cur._docId)); }
+      catch (x) { console.error('Error deleting:', x); }
     }
+    setFormData(p => ({ ...p, [field]: null }));
+    setErrors(p => clearFieldError(p, field));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-
-    const { isValid, errors: validationErrors } = validateForm(formData);
-    setErrors(validationErrors);
-
-
-    const allTouched = Object.keys(formData).reduce((acc, key) => ({ ...acc, [key]: true }), {});
-    setTouched(allTouched);
-
+    const { isValid, errors: ve } = validateForm(formData);
+    setErrors(ve);
+    setTouched(Object.keys(formData).reduce((a, k) => ({ ...a, [k]: true }), {}));
 
     if (!visualEnabled && !functionalEnabled) {
-
-      const section = document.querySelector('.cm-checking-type-selector');
-      section?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.querySelector('[data-section="ct"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
-
     if (!isValid) {
-
-      const firstErrorField = Object.keys(validationErrors).find(key => validationErrors[key]);
-      if (firstErrorField) {
-        const element = document.querySelector(`[name="${firstErrorField}"]`);
-        element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+      const fk = Object.keys(ve).find(k => ve[k]);
+      if (fk) document.querySelector(`[name="${fk}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
+    let ct = '';
+    if (visualEnabled && functionalEnabled) ct = 'dimensional_visual';
+    else if (visualEnabled) ct = 'visual';
+    else if (functionalEnabled) ct = 'functional';
 
-    let checkingType = '';
-    if (visualEnabled && functionalEnabled) {
-      checkingType = 'dimensional_visual';
-    } else if (visualEnabled) {
-      checkingType = 'visual';
-    } else if (functionalEnabled) {
-      checkingType = 'functional';
-    }
+    const ap = [];
+    if (visualEnabled) visualParams.filter(p => p.checkingPoint.trim()).forEach(p => ap.push({ ...p, type: 'visual', id: ap.length + 1 }));
+    if (functionalEnabled) functionalParams.filter(p => p.checkingPoint.trim()).forEach(p => ap.push({ ...p, type: 'functional', id: ap.length + 1 }));
 
-
-    const allParams = [];
-    if (visualEnabled) {
-      visualParams
-        .filter(p => p.checkingPoint.trim() !== '')
-        .forEach((p, i) => allParams.push({ ...p, type: 'visual', id: allParams.length + 1 }));
-    }
-    if (functionalEnabled) {
-      functionalParams
-        .filter(p => p.checkingPoint.trim() !== '')
-        .forEach((p, i) => allParams.push({ ...p, type: 'functional', id: allParams.length + 1 }));
-    }
-
-
-    const submissionData = {
-      ...formData,
-      checkingParameters: {
-        type: checkingType,
-        parameters: allParams,
-      }
-    };
-
-
+    const sd = { ...formData, checkingParameters: { type: ct, parameters: ap } };
     setIsSubmitting(true);
+    let saveSuccess = false;
     try {
-      let savedComp;
-      if (isEditing) {
-        savedComp = await updateComponent(id, submissionData);
-      } else {
-        savedComp = await createComponent(submissionData);
-      }
-
-      // Upload any NEW files (actual File objects, not existing server files)
-      const componentId = isEditing ? id : (savedComp?.id || null);
-      if (componentId) {
-        const fileFields = ['drawingAttachment', 'testCertFile', 'specFile', 'fqirFile'];
-        for (const fieldName of fileFields) {
-          const fileVal = formData[fieldName];
-          if (fileVal && fileVal instanceof File) {
-            try {
-              await uploadAttachment(fileVal, componentId, fieldName);
-            } catch (uploadErr) {
-              console.error(`Error uploading ${fieldName}:`, uploadErr);
-            }
+      let sc;
+      if (isEditing) sc = await updateComponent(id, sd);
+      else sc = await createComponent(sd);
+      saveSuccess = true;
+      const cid = isEditing ? id : (sc?.id || null);
+      if (cid) {
+        for (const fn of ['drawingAttachment', 'specFile']) {
+          const fv = formData[fn];
+          if (fv && fv instanceof File) {
+            try { await uploadAttachment(fv, cid, fn); } catch (x) { console.error(`Upload ${fn}:`, x); }
           }
         }
       }
-
-      setShowSuccess(true);
-    } catch (error) {
-      console.error(`Error ${isEditing ? 'updating' : 'creating'} component:`, error);
-      alert(`Failed to ${isEditing ? 'update' : 'create'} component: ${error.message}`);
+    } catch (err) {
+      console.error(`Error ${isEditing ? 'updating' : 'creating'}:`, err);
+      const msg = typeof err?.message === 'string' ? err.message : 'An unexpected error occurred';
+      alert(`Failed: ${msg}`);
     } finally {
       setIsSubmitting(false);
+      if (saveSuccess) setShowSuccess(true);
     }
   };
 
   const handleReset = () => {
-    setFormData(getInitialFormState());
-    setErrors(getInitialErrorState());
-    setTouched({});
-    setPartCodeValid(false);
-    setVisualEnabled(false);
-    setFunctionalEnabled(false);
+    setFormData(getInitialFormState()); setErrors(getInitialErrorState());
+    setTouched({}); setPartCodeValid(false);
+    setVisualEnabled(false); setFunctionalEnabled(false);
     setVisualParams([{ id: 1, checkingPoint: '', unit: '', specification: '', instrumentName: '' }]);
     setFunctionalParams([{ id: 1, checkingPoint: '', unit: 'mm', specification: '', instrumentName: '', toleranceMin: '', toleranceMax: '' }]);
-    setVisualCollapsed(false);
-    setFunctionalCollapsed(false);
-    setShowParamSummary(false);
+    setVisualCollapsed(false); setFunctionalCollapsed(false); setShowParamSummary(false);
   };
 
+  const handleCreateAnother = () => { setShowSuccess(false); handleReset(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
-  const unitOptions = [
-    { value: '', label: '—' },
-    { value: 'mm', label: 'mm' },
-    { value: 'cm', label: 'cm' },
-    { value: 'CM', label: 'CM' },
-    { value: 'inch', label: 'inch' },
-    { value: 'kg', label: 'kg' },
-    { value: 'g', label: 'g' },
-    { value: 'nos', label: 'Nos' },
-    { value: 'pcs', label: 'Pcs' },
-    { value: 'units', label: 'Units' },
-    { value: 'ply', label: 'Ply' },
-    { value: '%', label: '%' },
-    { value: 'V', label: 'V' },
-    { value: 'A', label: 'A' },
-    { value: 'Ω', label: 'Ω' },
-    { value: 'MHz', label: 'MHz' },
-    { value: 'PIN', label: 'PIN' },
-    { value: 'CORE', label: 'CORE' },
-    { value: 'ZZ', label: 'ZZ' },
-  ];
+  const unitOpts = apiUnits.length > 0
+    ? [{ value:'',label:'—' }, ...apiUnits.map(u => ({ value: u.code || u.name, label: u.name || u.code }))]
+    : [
+        { value:'',label:'—' },{ value:'mm',label:'mm' },{ value:'cm',label:'cm' },{ value:'CM',label:'CM' },
+        { value:'inch',label:'inch' },{ value:'kg',label:'kg' },{ value:'g',label:'g' },
+        { value:'nos',label:'Nos' },{ value:'pcs',label:'Pcs' },{ value:'units',label:'Units' },
+        { value:'ply',label:'Ply' },{ value:'%',label:'%' },{ value:'V',label:'V' },
+        { value:'A',label:'A' },{ value:'Ω',label:'Ω' },{ value:'MHz',label:'MHz' },
+        { value:'PIN',label:'PIN' },{ value:'CORE',label:'CORE' },{ value:'ZZ',label:'ZZ' },
+      ];
+  const instOpts = apiInstruments.length > 0
+    ? [{ value:'',label:'Select' }, ...apiInstruments.map(i => ({ value: i.name || i.code, label: i.name || i.code }))]
+    : [
+        { value:'',label:'Select' },{ value:'Visual',label:'Visual' },{ value:'Scale',label:'Scale' },
+        { value:'Vernier',label:'Vernier' },{ value:'Micrometer',label:'Micrometer' },
+        { value:'Multimeter',label:'Multimeter' },{ value:'Oscilloscope',label:'Oscilloscope' },
+        { value:'Gauge',label:'Gauge' },
+      ];
 
-  const instrumentOptions = [
-    { value: '', label: 'Select Instrument' },
-    { value: 'Visual', label: 'Visual' },
-    { value: 'Scale', label: 'Scale' },
-    { value: 'Vernier', label: 'Vernier Caliper' },
-    { value: 'Micrometer', label: 'Micrometer' },
-    { value: 'Multimeter', label: 'Multimeter' },
-    { value: 'Oscilloscope', label: 'Oscilloscope' },
-    { value: 'Gauge', label: 'Gauge' },
-  ];
+  const toggleCT = (t) => { if (t === 'visual') setVisualEnabled(p => !p); else setFunctionalEnabled(p => !p); };
+  const addVP = () => { const n = Math.max(...visualParams.map(p => p.id), 0) + 1; setVisualParams([...visualParams, { id: n, checkingPoint: '', unit: '', specification: '', instrumentName: '' }]); };
+  const rmVP = (pid) => { if (visualParams.length > 1) setVisualParams(visualParams.filter(p => p.id !== pid)); };
+  const upVP = (pid, f, v) => { setVisualParams(visualParams.map(p => p.id === pid ? { ...p, [f]: v } : p)); };
+  const addFP = () => { const n = Math.max(...functionalParams.map(p => p.id), 0) + 1; setFunctionalParams([...functionalParams, { id: n, checkingPoint: '', unit: 'mm', specification: '', instrumentName: '', toleranceMin: '', toleranceMax: '' }]); };
+  const rmFP = (pid) => { if (functionalParams.length > 1) setFunctionalParams(functionalParams.filter(p => p.id !== pid)); };
+  const upFP = (pid, f, v) => { setFunctionalParams(functionalParams.map(p => p.id === pid ? { ...p, [f]: v } : p)); };
 
+  const fVC = visualParams.filter(p => p.checkingPoint.trim()).length;
+  const fFC = functionalParams.filter(p => p.checkingPoint.trim()).length;
+  const totP = (visualEnabled ? fVC : 0) + (functionalEnabled ? fFC : 0);
+  const uploadedDocs = ['drawingAttachment','specFile'].filter(f => formData[f]).map(f => ({
+    field: f, file: formData[f], type: docTypeKey[f], label: docTypeLabel[f],
+    name: formData[f]?.name || 'Unknown', size: formData[f]?.size || 0,
+    existing: !!formData[f]?._isExisting,
+  }));
 
-  const toggleCheckingType = (type) => {
-    if (type === 'visual') {
-      setVisualEnabled(prev => !prev);
-    } else {
-      setFunctionalEnabled(prev => !prev);
-    }
-  };
-
-
-  const addVisualParam = () => {
-    const newId = Math.max(...visualParams.map(p => p.id), 0) + 1;
-    setVisualParams([...visualParams, { id: newId, checkingPoint: '', unit: '', specification: '', instrumentName: '' }]);
-  };
-
-  const removeVisualParam = (id) => {
-    if (visualParams.length > 1) {
-      setVisualParams(visualParams.filter(p => p.id !== id));
-    }
-  };
-
-  const updateVisualParam = (id, field, value) => {
-    setVisualParams(visualParams.map(p =>
-      p.id === id ? { ...p, [field]: value } : p
-    ));
-  };
-
-
-  const addFunctionalParam = () => {
-    const newId = Math.max(...functionalParams.map(p => p.id), 0) + 1;
-    setFunctionalParams([...functionalParams, { id: newId, checkingPoint: '', unit: 'mm', specification: '', instrumentName: '', toleranceMin: '', toleranceMax: '' }]);
-  };
-
-  const removeFunctionalParam = (id) => {
-    if (functionalParams.length > 1) {
-      setFunctionalParams(functionalParams.filter(p => p.id !== id));
-    }
-  };
-
-  const updateFunctionalParam = (id, field, value) => {
-    setFunctionalParams(functionalParams.map(p =>
-      p.id === id ? { ...p, [field]: value } : p
-    ));
-  };
-
-  const handleCreateAnother = () => {
-    setShowSuccess(false);
-    handleReset();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-
-  const filledVisualCount = visualParams.filter(p => p.checkingPoint.trim() !== '').length;
-  const filledFunctionalCount = functionalParams.filter(p => p.checkingPoint.trim() !== '').length;
-  const totalParamCount = (visualEnabled ? filledVisualCount : 0) + (functionalEnabled ? filledFunctionalCount : 0);
-
+  /* ═══ RENDER ═══ */
+  if (isLoading) return (
+    <div style={cs.page}><div style={{display:'flex',justifyContent:'center',alignItems:'center',minHeight:'60vh'}}>
+      <div style={{textAlign:'center'}}><RefreshCw size={26} style={{animation:'spin 1s linear infinite',color:T.textMuted}} />
+      <p style={{marginTop:10,color:T.textMuted,fontSize:12}}>Loading…</p></div></div></div>
+  );
 
   return (
-    <div className="cm-page">
-      {isLoading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-          <div style={{ textAlign: 'center' }}>
-            <RefreshCw size={32} style={{ animation: 'spin 1s linear infinite', color: '#667085' }} />
-            <p style={{ marginTop: '16px', color: '#667085' }}>Loading component data...</p>
-          </div>
+    <div style={cs.page}>
+      {/* TOP BAR */}
+      <div style={cs.topBar}>
+        <div style={cs.topLeft}>
+          <div style={cs.topIcon}><Package size={18} /></div>
+          <div><div style={cs.topTitle}>{isEditing ? 'Edit Component' : 'New Component Entry'}</div>
+          <div style={cs.topSub}>{isEditing ? 'Update details' : 'Register a new QC component'}</div></div>
         </div>
-      ) : (
-      <>
-      <Header
-        title="Component Master"
-        subtitle="Create and manage QC component specifications"
-        actions={
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <FormButton
-              variant="outline"
-              icon={ArrowLeft}
-              onClick={() => navigate('/admin/component-master')}
-            >
-              Back to List
-            </FormButton>
-          </div>
-        }
-      />
+        <div style={cs.topBtns}>
+          <button style={cs.topBtn} onClick={() => navigate('/admin/component-master')} type="button"><ArrowLeft size={13} /> Back</button>
+          <button style={cs.topBtn} onClick={handleReset} type="button"><RefreshCw size={13} /> Reset</button>
+        </div>
+      </div>
 
-      <div className="cm-content">
+      <div style={cs.content}>
         <form onSubmit={handleSubmit}>
-          <div className="cm-form-container">
-            {/* Form Header */}
-            <div className="cm-form-header">
-              <div className="cm-form-header-content">
-                <div className="cm-form-header-left">
-                  <div className="cm-form-icon">
-                    <Package size={28} color="white" />
-                  </div>
-                  <div>
-                    <h1 className="cm-form-title">{isEditing ? 'Edit Component' : 'New Component Entry'}</h1>
-                    <p className="cm-form-subtitle">{isEditing ? 'Update the component details' : 'Fill in the details to register a new QC component'}</p>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <FormButton
-                    variant="ghost"
-                    icon={RefreshCw}
-                    onClick={handleReset}
-                    style={{ color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.2)' }}
-                  >
-                    Reset
-                  </FormButton>
-                </div>
-              </div>
+
+          {/* ═ SECTION 1: Classification + Part ID ═ */}
+          <div style={cs.sec}>
+            <div style={cs.secH}>
+              <div style={cs.secHL}><div style={cs.secIcon}><Layers size={14} color={T.primary} /></div><span style={cs.secTitle}>Classification & Part Identification</span></div>
+              <span style={cs.secBadge}>Step 1 / 4</span>
             </div>
-
-            {}
-            <div className="cm-form-body">
-              {}
-              <FormSection
-                icon={Layers}
-                title="Product Classification"
-                badge="Step 1 of 5"
-              >
-                <CategorySelector
-                  categories={categories}
-                  value={formData.productCategory}
-                  onChange={handleChange}
-                  error={touched.productCategory && errors.productCategory}
-                  required
-                />
-
-                <div className="cm-form-grid cm-form-grid-2" style={{ marginTop: '24px' }}>
-                  <FormSelect
-                    label="Product Group"
-                    name="productGroup"
-                    value={formData.productGroup}
-                    onChange={handleChange}
-                    options={productGroups}
-                    placeholder={formData.productCategory ? 'Select product group' : 'Select category first'}
-                    error={touched.productGroup && errors.productGroup}
-                    onBlur={handleBlur}
-                    required
-                    disabled={!formData.productCategory}
-                    loading={loadingGroups}
-                  />
-                  <FormSelect
-                    label="QC Plan"
-                    name="qcPlanNo"
-                    value={formData.qcPlanNo}
-                    onChange={handleChange}
-                    options={qcPlans.map(p => ({ value: p.id, label: `${p.id} - ${p.name}` }))}
-                    placeholder="Select QC plan"
-                    error={touched.qcPlanNo && errors.qcPlanNo}
-                    onBlur={handleBlur}
-                    required
-                    loading={loadingQCPlans}
-                  />
-                </div>
-              </FormSection>
-
-              {}
-              <FormSection
-                icon={Package}
-                title="Part Identification"
-                badge="Step 2 of 5"
-              >
-                <div className="cm-form-grid cm-form-grid-2">
-                  <FormInput
-                    label="Part Code"
-                    name="partCode"
-                    value={formData.partCode}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    error={touched.partCode && errors.partCode}
-                    required
-                    placeholder="e.g., RCNA-001"
-                    suffix={
-                      partCodeChecking ? (
-                        <RefreshCw size={14} className="cm-spin" style={{ color: '#2196F3' }} />
-                      ) : partCodeValid ? (
-                        <CheckCircle size={14} style={{ color: '#4CAF50' }} />
-                      ) : null
-                    }
-                  />
-                  <FormInput
-                    label="Part Name"
-                    name="partName"
-                    value={formData.partName}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    error={touched.partName && errors.partName}
-                    required
-                    placeholder="e.g., CHANNEL FRAME - REGULAR"
-                  />
-                </div>
-                <div className="cm-form-grid cm-form-grid-2" style={{ marginTop: '16px' }}>
-                  <FormInput
-                    label="Drawing Number"
-                    name="drawingNo"
-                    value={formData.drawingNo}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    error={touched.drawingNo && errors.drawingNo}
-                    placeholder="e.g., DWG-001-R3"
-                  />
-                  <FormSelect
-                    label="PR Process Code"
-                    name="prProcessCode"
-                    value={formData.prProcessCode}
-                    onChange={handleChange}
-                    options={[
-                      { value: 'direct_purchase', label: 'Direct Purchase' },
-                      { value: 'internal_job_work', label: 'Internal Job Work' },
-                      { value: 'sub_contracting', label: 'Sub Contracting' },
-                      { value: 'ec_rep_sticker', label: 'EC Rep Sticker' },
-                    ]}
-                    placeholder="Select process code"
-                    error={touched.prProcessCode && errors.prProcessCode}
-                    onBlur={handleBlur}
-                  />
-                </div>
-              </FormSection>
-
-              {}
-              <FormSection
-                icon={Shield}
-                title="Inspection Configuration"
-                badge="Step 3 of 5"
-              >
-                <FormToggle
-                  label="Inspection Type"
-                  name="inspectionType"
-                  value={formData.inspectionType}
-                  onChange={handleChange}
-                  required
-                  options={[
-                    { value: '100%', label: '100% Inspection', description: 'Inspect every unit' },
-                    { value: 'sampling', label: 'Sampling Inspection', description: 'Inspect based on AQL plan' },
-                  ]}
-                />
-                {formData.inspectionType === 'sampling' && (
-                  <div style={{ marginTop: '16px' }}>
-                    <FormSelect
-                      label="Sampling Plan"
-                      name="samplingPlan"
-                      value={formData.samplingPlan}
-                      onChange={handleChange}
-                      options={samplingPlans.map(p => ({ value: p.id, label: `${p.name} (${p.aqlLevel})` }))}
-                      placeholder="Select sampling plan"
-                      error={touched.samplingPlan && errors.samplingPlan}
-                      onBlur={handleBlur}
-                      required
-                      loading={loadingSamplingPlans}
-                    />
-                  </div>
-                )}
-              </FormSection>
-
-              {}
-              <FormSection
-                icon={FileText}
-                title="Documentation & Compliance"
-                badge="Step 4 of 5"
-              >
-                <div className="cm-form-grid cm-form-grid-3">
-                  <FormCheckboxCard
-                    label="Test Certificate"
-                    name="testCertRequired"
-                    checked={formData.testCertRequired}
-                    onChange={handleChange}
-                    description="Vendor test certificate required"
-                    icon={Clipboard}
-                  />
-                  <FormCheckboxCard
-                    label="Specification Document"
-                    name="specRequired"
-                    checked={formData.specRequired}
-                    onChange={handleChange}
-                    description="Detailed specification required"
-                    icon={FileText}
-                  />
-                  <FormCheckboxCard
-                    label="FQIR Document"
-                    name="fqirRequired"
-                    checked={formData.fqirRequired}
-                    onChange={handleChange}
-                    description="First Quality Inspection Report"
-                    icon={Shield}
-                  />
-                </div>
-
-                <div className="cm-form-grid cm-form-grid-3" style={{ marginTop: '20px' }}>
-                  <FormFileUpload
-                    label="Drawing Attachment"
-                    name="drawingAttachment"
-                    value={formData.drawingAttachment}
-                    onChange={handleFileChange}
-                    accept=".pdf,.png,.jpg,.jpeg,.dwg"
-                    maxSize={10}
-                    error={errors.drawingAttachment}
-                    description="Engineering drawing file"
-                  />
-                  <FormFileUpload
-                    label="Test Certificate File"
-                    name="testCertFile"
-                    value={formData.testCertFile}
-                    onChange={handleFileChange}
-                    accept=".pdf,.png,.jpg,.jpeg"
-                    maxSize={5}
-                    error={errors.testCertFile}
-                    description="Upload vendor test certificate"
-                  />
-                  <FormFileUpload
-                    label="FQIR File"
-                    name="fqirFile"
-                    value={formData.fqirFile}
-                    onChange={handleFileChange}
-                    accept=".pdf,.png,.jpg,.jpeg"
-                    maxSize={5}
-                    error={errors.fqirFile}
-                    description="First article quality inspection report"
-                  />
-                </div>
-              </FormSection>
-
-              {}
-              <FormSection
-                icon={Ruler}
-                title="Detailed Checking Parameters"
-                badge="Step 5 of 5"
-              >
-                {}
-                <div className="cm-checking-type-selector">
-                  <label className="cm-label" style={{ marginBottom: '8px', display: 'block' }}>
-                    Checking Type
-                    <span className="cm-label-required">*</span>
-                  </label>
-                  <p style={{
-                    fontSize: '13px',
-                    color: 'var(--cm-gray-500)',
-                    marginBottom: '16px',
-                    lineHeight: '1.5'
-                  }}>
-                    Select one or both checking types. Components can have visual inspection, functional testing, or a combination of both.
-                  </p>
-
-                  <div className="cm-checking-type-cards">
-                    {}
-                    <div
-                      className={`cm-checking-type-card ${visualEnabled ? 'cm-checking-type-active' : ''}`}
-                      onClick={() => toggleCheckingType('visual')}
-                    >
-                      <div className="cm-checking-type-checkbox">
-                        {visualEnabled && <Check size={14} strokeWidth={3} />}
-                      </div>
-                      <div className="cm-checking-type-icon">
-                        <Eye size={28} />
-                      </div>
-                      <div className="cm-checking-type-content">
-                        <span className="cm-checking-type-title">Visual Inspection</span>
-                        <span className="cm-checking-type-desc">Surface finish, color, appearance, damage checks</span>
-                      </div>
-                      {visualEnabled && filledVisualCount > 0 && (
-                        <span className="cm-checking-type-badge">
-                          {filledVisualCount} param{filledVisualCount !== 1 ? 's' : ''}
-                        </span>
-                      )}
-                    </div>
-
-                    {}
-                    <div
-                      className={`cm-checking-type-card ${functionalEnabled ? 'cm-checking-type-active' : ''}`}
-                      onClick={() => toggleCheckingType('functional')}
-                    >
-                      <div className="cm-checking-type-checkbox">
-                        {functionalEnabled && <Check size={14} strokeWidth={3} />}
-                      </div>
-                      <div className="cm-checking-type-icon">
-                        <Wrench size={28} />
-                      </div>
-                      <div className="cm-checking-type-content">
-                        <span className="cm-checking-type-title">Functional Testing</span>
-                        <span className="cm-checking-type-desc">Measurements, tolerances, instrument-based</span>
-                      </div>
-                      {functionalEnabled && filledFunctionalCount > 0 && (
-                        <span className="cm-checking-type-badge">
-                          {filledFunctionalCount} param{filledFunctionalCount !== 1 ? 's' : ''}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {}
-                  {visualEnabled && functionalEnabled && (
-                    <div className="cm-combined-type-banner">
-                      <div className="cm-combined-type-icon">
-                        <Zap size={16} />
-                      </div>
-                      <div className="cm-combined-type-text">
-                        <strong>Combined Inspection:</strong> This component will require both Visual Inspection and Functional Testing stages during QC.
-                      </div>
-                    </div>
-                  )}
-
-                  {}
-                  {!visualEnabled && !functionalEnabled && (
-                    <div className="cm-no-type-hint">
-                      <AlertCircle size={14} />
-                      <span>Please select at least one checking type to define parameters</span>
-                    </div>
-                  )}
-                </div>
-
-                {}
-                {visualEnabled && (
-                  <div className="cm-param-section" style={{ marginTop: '24px' }}>
-                    <div className="cm-param-header">
-                      <div className="cm-param-title">
-                        <Eye size={18} className="cm-param-icon" />
-                        <span>Visual Checking Parameters</span>
-                        <span className="cm-param-count">{visualParams.length} parameter(s)</span>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <button
-                          type="button"
-                          className="cm-btn cm-btn-outline cm-btn-sm"
-                          onClick={addVisualParam}
-                        >
-                          <Plus size={16} /> Add Parameter
-                        </button>
-                        <button
-                          type="button"
-                          className="cm-btn-icon"
-                          onClick={() => setVisualCollapsed(!visualCollapsed)}
-                          title={visualCollapsed ? 'Expand' : 'Collapse'}
-                        >
-                          {visualCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
-                        </button>
-                      </div>
-                    </div>
-
-                    {!visualCollapsed && (
-                      <div className="cm-param-table">
-                        <div className="cm-param-table-header">
-                          <div className="cm-param-col cm-param-col-sl">Sl.No</div>
-                          <div className="cm-param-col cm-param-col-check">Checking Point</div>
-                          <div className="cm-param-col cm-param-col-unit">Unit</div>
-                          <div className="cm-param-col cm-param-col-spec">Specification</div>
-                          <div className="cm-param-col cm-param-col-inst">Instrument</div>
-                          <div className="cm-param-col cm-param-col-action">Action</div>
-                        </div>
-                        {visualParams.map((param, index) => (
-                          <div key={param.id} className="cm-param-row">
-                            <div className="cm-param-col cm-param-col-sl">{index + 1}</div>
-                            <div className="cm-param-col cm-param-col-check">
-                              <input
-                                type="text"
-                                className="cm-input cm-input-sm"
-                                placeholder="e.g., Surface Finish, Damage Checking"
-                                value={param.checkingPoint}
-                                onChange={(e) => updateVisualParam(param.id, 'checkingPoint', e.target.value)}
-                              />
-                            </div>
-                            <div className="cm-param-col cm-param-col-unit">
-                              <select
-                                className="cm-select cm-select-sm"
-                                value={param.unit}
-                                onChange={(e) => updateVisualParam(param.id, 'unit', e.target.value)}
-                              >
-                                {unitOptions.map(opt => (
-                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="cm-param-col cm-param-col-spec">
-                              <input
-                                type="text"
-                                className="cm-input cm-input-sm"
-                                placeholder="e.g., No scratches, As per sample"
-                                value={param.specification}
-                                onChange={(e) => updateVisualParam(param.id, 'specification', e.target.value)}
-                              />
-                            </div>
-                            <div className="cm-param-col cm-param-col-inst">
-                              <select
-                                className="cm-select cm-select-sm"
-                                value={param.instrumentName}
-                                onChange={(e) => updateVisualParam(param.id, 'instrumentName', e.target.value)}
-                              >
-                                {instrumentOptions.map(opt => (
-                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="cm-param-col cm-param-col-action">
-                              <button
-                                type="button"
-                                className="cm-btn-icon cm-btn-danger-icon"
-                                onClick={() => removeVisualParam(param.id)}
-                                disabled={visualParams.length === 1}
-                                title="Remove parameter"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {}
-                {functionalEnabled && (
-                  <div className="cm-param-section" style={{ marginTop: '24px' }}>
-                    <div className="cm-param-header">
-                      <div className="cm-param-title">
-                        <Wrench size={18} className="cm-param-icon" />
-                        <span>Functional Checking Parameters</span>
-                        <span className="cm-param-count">{functionalParams.length} parameter(s)</span>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <button
-                          type="button"
-                          className="cm-btn cm-btn-outline cm-btn-sm"
-                          onClick={addFunctionalParam}
-                        >
-                          <Plus size={16} /> Add Parameter
-                        </button>
-                        <button
-                          type="button"
-                          className="cm-btn-icon"
-                          onClick={() => setFunctionalCollapsed(!functionalCollapsed)}
-                          title={functionalCollapsed ? 'Expand' : 'Collapse'}
-                        >
-                          {functionalCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
-                        </button>
-                      </div>
-                    </div>
-
-                    {!functionalCollapsed && (
-                      <div className="cm-param-table cm-param-table-functional">
-                        <div className="cm-param-table-header">
-                          <div className="cm-param-col cm-param-col-sl">Sl.No</div>
-                          <div className="cm-param-col cm-param-col-check-sm">Checking Point</div>
-                          <div className="cm-param-col cm-param-col-unit">Unit</div>
-                          <div className="cm-param-col cm-param-col-spec-sm">Specification</div>
-                          <div className="cm-param-col cm-param-col-inst">Instrument</div>
-                          <div className="cm-param-col cm-param-col-tol">Tol. Min</div>
-                          <div className="cm-param-col cm-param-col-tol">Tol. Max</div>
-                          <div className="cm-param-col cm-param-col-action">Action</div>
-                        </div>
-                        {functionalParams.map((param, index) => (
-                          <div key={param.id} className="cm-param-row">
-                            <div className="cm-param-col cm-param-col-sl">{index + 1}</div>
-                            <div className="cm-param-col cm-param-col-check-sm">
-                              <input
-                                type="text"
-                                className="cm-input cm-input-sm"
-                                placeholder="e.g., Length, Diameter"
-                                value={param.checkingPoint}
-                                onChange={(e) => updateFunctionalParam(param.id, 'checkingPoint', e.target.value)}
-                              />
-                            </div>
-                            <div className="cm-param-col cm-param-col-unit">
-                              <select
-                                className="cm-select cm-select-sm"
-                                value={param.unit}
-                                onChange={(e) => updateFunctionalParam(param.id, 'unit', e.target.value)}
-                              >
-                                {unitOptions.map(opt => (
-                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="cm-param-col cm-param-col-spec-sm">
-                              <input
-                                type="text"
-                                className="cm-input cm-input-sm"
-                                placeholder="e.g., 250mm +/-0.5"
-                                value={param.specification}
-                                onChange={(e) => updateFunctionalParam(param.id, 'specification', e.target.value)}
-                              />
-                            </div>
-                            <div className="cm-param-col cm-param-col-inst">
-                              <select
-                                className="cm-select cm-select-sm"
-                                value={param.instrumentName}
-                                onChange={(e) => updateFunctionalParam(param.id, 'instrumentName', e.target.value)}
-                              >
-                                {instrumentOptions.map(opt => (
-                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="cm-param-col cm-param-col-tol">
-                              <input
-                                type="text"
-                                className="cm-input cm-input-sm"
-                                placeholder="Min"
-                                value={param.toleranceMin}
-                                onChange={(e) => updateFunctionalParam(param.id, 'toleranceMin', e.target.value)}
-                              />
-                            </div>
-                            <div className="cm-param-col cm-param-col-tol">
-                              <input
-                                type="text"
-                                className="cm-input cm-input-sm"
-                                placeholder="Max"
-                                value={param.toleranceMax}
-                                onChange={(e) => updateFunctionalParam(param.id, 'toleranceMax', e.target.value)}
-                              />
-                            </div>
-                            <div className="cm-param-col cm-param-col-action">
-                              <button
-                                type="button"
-                                className="cm-btn-icon cm-btn-danger-icon"
-                                onClick={() => removeFunctionalParam(param.id)}
-                                disabled={functionalParams.length === 1}
-                                title="Remove parameter"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {}
-                {(visualEnabled || functionalEnabled) && totalParamCount > 0 && (
-                  <div className="cm-param-summary" style={{ marginTop: '24px' }}>
-                    <div
-                      className="cm-param-summary-header"
-                      onClick={() => setShowParamSummary(!showParamSummary)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <div className="cm-param-summary-title">
-                        <CheckCircle size={18} style={{ color: 'var(--cm-success)' }} />
-                        <span>Parameter Summary — {totalParamCount} total checkpoint{totalParamCount !== 1 ? 's' : ''}</span>
-                        {visualEnabled && functionalEnabled && (
-                          <span className="cm-param-summary-combined-badge">Combined</span>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          {visualEnabled && (
-                            <span className="cm-param-summary-type-pill cm-param-summary-type-visual">
-                              <Eye size={12} /> {filledVisualCount} Visual
-                            </span>
-                          )}
-                          {functionalEnabled && (
-                            <span className="cm-param-summary-type-pill cm-param-summary-type-functional">
-                              <Wrench size={12} /> {filledFunctionalCount} Functional
-                            </span>
-                          )}
-                        </div>
-                        {showParamSummary ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                      </div>
-                    </div>
-
-                    {showParamSummary && (
-                      <div className="cm-param-summary-body">
-                        {}
-                        {visualEnabled && filledVisualCount > 0 && (
-                          <div className="cm-param-summary-section">
-                            <div className="cm-param-summary-section-header">
-                              <Eye size={14} />
-                              <span>Visual Inspection Parameters</span>
-                            </div>
-                            <table className="cm-param-summary-table">
-                              <thead>
-                                <tr>
-                                  <th style={{ width: '40px' }}>#</th>
-                                  <th>Checking Point</th>
-                                  <th>Unit</th>
-                                  <th>Specification</th>
-                                  <th>Instrument</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {visualParams.filter(p => p.checkingPoint.trim() !== '').map((p, i) => (
-                                  <tr key={p.id}>
-                                    <td>{i + 1}</td>
-                                    <td style={{ fontWeight: 500 }}>{p.checkingPoint}</td>
-                                    <td>{p.unit || '—'}</td>
-                                    <td>{p.specification || '—'}</td>
-                                    <td>{p.instrumentName || '—'}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-
-                        {}
-                        {functionalEnabled && filledFunctionalCount > 0 && (
-                          <div className="cm-param-summary-section">
-                            <div className="cm-param-summary-section-header">
-                              <Wrench size={14} />
-                              <span>Functional Testing Parameters</span>
-                            </div>
-                            <table className="cm-param-summary-table">
-                              <thead>
-                                <tr>
-                                  <th style={{ width: '40px' }}>#</th>
-                                  <th>Checking Point</th>
-                                  <th>Unit</th>
-                                  <th>Specification</th>
-                                  <th>Instrument</th>
-                                  <th>Tol. Min</th>
-                                  <th>Tol. Max</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {functionalParams.filter(p => p.checkingPoint.trim() !== '').map((p, i) => (
-                                  <tr key={p.id}>
-                                    <td>{i + 1}</td>
-                                    <td style={{ fontWeight: 500 }}>{p.checkingPoint}</td>
-                                    <td>{p.unit || '—'}</td>
-                                    <td>{p.specification || '—'}</td>
-                                    <td>{p.instrumentName || '—'}</td>
-                                    <td>{p.toleranceMin || '—'}</td>
-                                    <td>{p.toleranceMax || '—'}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </FormSection>
-            </div>
-
-            {}
-            <div className="cm-form-footer">
-              <div className="cm-form-footer-left">
-                <FormButton
-                  variant="ghost"
-                  icon={RefreshCw}
-                  onClick={handleReset}
-                  type="button"
-                >
-                  Reset Form
-                </FormButton>
+            <div style={cs.secBody}>
+              <CategorySelector categories={categories} value={formData.productCategory} onChange={handleChange} error={touched.productCategory && errors.productCategory} required />
+              <div style={{...cs.g3,...cs.mt8}}>
+                <div><label style={cs.lbl}>QC Plan<span style={cs.req}>*</span></label>
+                  <FormSelect name="qcPlanNo" value={formData.qcPlanNo} onChange={handleChange} options={qcPlans.map(p=>({value:p.id,label:`${p.id} - ${p.name}`}))} placeholder="Select QC plan" error={touched.qcPlanNo&&errors.qcPlanNo} onBlur={handleBlur} required loading={loadingQCPlans} /></div>
+                <div><label style={cs.lbl}>Part Code<span style={cs.req}>*</span></label>
+                  <FormInput name="partCode" value={formData.partCode} onChange={handleChange} onBlur={handleBlur} error={touched.partCode&&errors.partCode} required placeholder="e.g., RCNA-001"
+                    suffix={partCodeChecking?<RefreshCw size={11} className="cm-spin" style={{color:'#2196F3'}}/>:partCodeValid?<CheckCircle size={11} style={{color:'#4CAF50'}}/>:null} /></div>
+                <div><label style={cs.lbl}>Part Name<span style={cs.req}>*</span></label>
+                  <FormInput name="partName" value={formData.partName} onChange={handleChange} onBlur={handleBlur} error={touched.partName&&errors.partName} required placeholder="e.g., CHANNEL FRAME" /></div>
               </div>
-              <div className="cm-form-footer-right">
-                <FormButton
-                  variant="outline"
-                  onClick={() => navigate('/admin/component-master')}
-                  type="button"
-                >
-                  Cancel
-                </FormButton>
-                <FormButton
-                  variant="primary"
-                  icon={Save}
-                  type="submit"
-                  loading={isSubmitting}
-                >
-                  {isEditing ? 'Update Component' : 'Save Component'}
-                </FormButton>
+              <div style={{...cs.g2,...cs.mt8}}>
+                <div><label style={cs.lbl}>Drawing No</label>
+                  <FormInput name="drawingNo" value={formData.drawingNo} onChange={handleChange} onBlur={handleBlur} error={touched.drawingNo&&errors.drawingNo} placeholder="e.g., DWG-001-R3" /></div>
+                <div><label style={cs.lbl}>Source Type</label>
+                  <FormSelect name="prProcessCode" value={formData.prProcessCode} onChange={handleChange}
+                    options={[{value:'direct_purchase_external',label:'Direct Purchase – External'},{value:'direct_purchase_internal',label:'Direct Purchase – Internal'},{value:'job_work_internal',label:'Job Work – Internal'},{value:'job_work_external',label:'Job Work – External/Subcontract'}]}
+                    placeholder="Select source type" error={touched.prProcessCode&&errors.prProcessCode} onBlur={handleBlur} /></div>
               </div>
             </div>
           </div>
+
+          {/* ═ SECTION 2: Inspection Config ═ */}
+          <div style={cs.sec}>
+            <div style={cs.secH}>
+              <div style={cs.secHL}><div style={cs.secIcon}><Shield size={14} color={T.primary} /></div><span style={cs.secTitle}>Inspection Configuration</span></div>
+              <span style={cs.secBadge}>Step 2 / 4</span>
+            </div>
+            <div style={cs.secBody}>
+              <div style={cs.togRow}>
+                <div style={cs.togBtn(formData.inspectionType==='100%')} onClick={()=>handleChange({target:{name:'inspectionType',value:'100%',type:'text'}})}>100% Inspection</div>
+                <div style={cs.togBtn(formData.inspectionType==='sampling')} onClick={()=>handleChange({target:{name:'inspectionType',value:'sampling',type:'text'}})}>Sampling Inspection</div>
+              </div>
+              {formData.inspectionType==='sampling'&&(
+                <div style={{maxWidth:380}}><label style={cs.lbl}>Sampling Plan<span style={cs.req}>*</span></label>
+                  <FormSelect name="samplingPlan" value={formData.samplingPlan} onChange={handleChange} options={samplingPlans.map(p=>({value:p.id,label:`${p.name} (${p.aqlLevel})`}))} placeholder="Select sampling plan" error={touched.samplingPlan&&errors.samplingPlan} onBlur={handleBlur} required loading={loadingSamplingPlans} /></div>
+              )}
+            </div>
+          </div>
+
+          {/* ═ SECTION 3: Documentation & Compliance ═ */}
+          <div style={cs.sec}>
+            <div style={cs.secH}>
+              <div style={cs.secHL}><div style={cs.secIcon}><FileText size={14} color={T.primary} /></div><span style={cs.secTitle}>Documentation & Compliance</span></div>
+              <span style={cs.secBadge}>Step 3 / 4</span>
+            </div>
+            <div style={cs.secBody}>
+              <div style={cs.specChk(formData.specRequired)} onClick={()=>handleChange({target:{name:'specRequired',value:!formData.specRequired,type:'checkbox',checked:!formData.specRequired}})}>
+                <div style={cs.specCb(formData.specRequired)}>{formData.specRequired&&<Check size={9} color="#fff" strokeWidth={3}/>}</div>
+                <div><div style={{fontSize:11,fontWeight:600,color:T.text}}>Specification Document Required</div>
+                <div style={{fontSize:10,color:T.textMuted}}>Detailed spec must be attached</div></div>
+              </div>
+              <div style={cs.g2}>
+                <div style={cs.upZone} onClick={()=>handleDirectUpload('drawingAttachment','.pdf,.png,.jpg,.jpeg,.dwg')}>
+                  <Upload size={16} color={T.textMuted}/><div style={cs.upLbl}>{formData.drawingAttachment?'✓ Replace Drawing':'Upload Drawing'}</div>
+                  <div style={{fontSize:9,color:T.textMuted}}>PDF, PNG, JPG, DWG · Max 10MB</div></div>
+                <div style={cs.upZone} onClick={()=>handleDirectUpload('specFile','.pdf,.png,.jpg,.jpeg')}>
+                  <Upload size={16} color={T.textMuted}/><div style={cs.upLbl}>{formData.specFile?'✓ Replace Specification':'Upload Specification'}</div>
+                  <div style={{fontSize:9,color:T.textMuted}}>PDF, PNG, JPG · Max 5MB</div></div>
+              </div>
+              {errors.drawingAttachment&&<div style={cs.err}>{errors.drawingAttachment}</div>}
+              {errors.specFile&&<div style={cs.err}>{errors.specFile}</div>}
+
+              {/* UPLOADED DOCUMENTS TABLE */}
+              {uploadedDocs.length > 0 ? (
+                <table style={cs.docTbl}>
+                  <thead><tr>
+                    <th style={cs.docTh}>Type</th><th style={cs.docTh}>File Name</th>
+                    <th style={cs.docTh}>Size</th><th style={cs.docTh}>Status</th>
+                    <th style={{...cs.docTh,textAlign:'center',width:70}}>Action</th>
+                  </tr></thead>
+                  <tbody>{uploadedDocs.map(d=>(
+                    <tr key={d.field}>
+                      <td style={cs.docTd}><span style={cs.docBadge(d.type)}>{d.label}</span></td>
+                      <td style={cs.docTd}><div style={cs.docName}><FileIcon size={12} color={T.textMuted}/>{d.name}</div></td>
+                      <td style={cs.docTd}><span style={{fontSize:10,color:T.textMuted}}>{fmtSize(d.size)}</span></td>
+                      <td style={cs.docTd}>{d.existing
+                        ?<span style={{fontSize:10,color:T.success,fontWeight:600}}>● Saved</span>
+                        :<span style={{fontSize:10,color:T.warning,fontWeight:600}}>● Pending</span>}</td>
+                      <td style={{...cs.docTd,textAlign:'center'}}><button type="button" style={cs.docRm} onClick={()=>handleRemoveFile(d.field)}><Trash2 size={11}/> Remove</button></td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              ) : (
+                <div style={{textAlign:'center',padding:8,fontSize:11,color:T.textMuted,marginTop:6}}>No documents uploaded</div>
+              )}
+            </div>
+          </div>
+
+          {/* ═ SECTION 4: Checking Parameters ═ */}
+          <div style={cs.sec} data-section="ct">
+            <div style={cs.secH}>
+              <div style={cs.secHL}><div style={cs.secIcon}><Ruler size={14} color={T.primary} /></div><span style={cs.secTitle}>Checking Parameters</span></div>
+              <span style={cs.secBadge}>Step 4 / 4</span>
+            </div>
+            <div style={cs.secBody}>
+              <label style={{...cs.lbl,marginBottom:6}}>Checking Type<span style={cs.req}>*</span></label>
+              <div style={cs.ctRow}>
+                <div style={cs.ctCard(visualEnabled)} onClick={()=>toggleCT('visual')}>
+                  <div style={cs.ctCb(visualEnabled)}>{visualEnabled&&<Check size={10} color="#fff" strokeWidth={3}/>}</div>
+                  <Eye size={18} color={visualEnabled?T.primary:T.textMuted}/>
+                  <div><div style={cs.ctLbl}>Visual Inspection</div><div style={cs.ctDesc}>Surface, appearance, damage</div></div>
+                  {visualEnabled&&fVC>0&&<span style={cs.sumPill('visual')}>{fVC}</span>}
+                </div>
+                <div style={cs.ctCard(functionalEnabled)} onClick={()=>toggleCT('functional')}>
+                  <div style={cs.ctCb(functionalEnabled)}>{functionalEnabled&&<Check size={10} color="#fff" strokeWidth={3}/>}</div>
+                  <Wrench size={18} color={functionalEnabled?T.primary:T.textMuted}/>
+                  <div><div style={cs.ctLbl}>Functional Testing</div><div style={cs.ctDesc}>Measurements, tolerances</div></div>
+                  {functionalEnabled&&fFC>0&&<span style={cs.sumPill('functional')}>{fFC}</span>}
+                </div>
+              </div>
+
+              {visualEnabled&&functionalEnabled&&(
+                <div style={cs.combBnr}><Zap size={14}/><span><strong>Combined:</strong> Both Visual + Functional stages required.</span></div>
+              )}
+              {!visualEnabled&&!functionalEnabled&&(
+                <div style={cs.noHint}><AlertCircle size={13}/><span>Select at least one checking type</span></div>
+              )}
+
+              {/* VISUAL PARAMS */}
+              {visualEnabled&&(<>
+                <div style={cs.pHdr}>
+                  <div style={cs.pTitle}><Eye size={13} color={T.primary}/><span>Visual Parameters</span><span style={cs.pCnt}>{visualParams.length}</span></div>
+                  <div style={{display:'flex',gap:5,alignItems:'center'}}>
+                    <button type="button" style={cs.pAdd} onClick={addVP}><Plus size={11}/> Add</button>
+                    <button type="button" style={cs.colBtn} onClick={()=>setVisualCollapsed(!visualCollapsed)}>{visualCollapsed?<ChevronDown size={15}/>:<ChevronUp size={15}/>}</button>
+                  </div>
+                </div>
+                {!visualCollapsed&&(
+                  <table style={cs.pTbl}><thead><tr>
+                    <th style={{...cs.pTh,width:32}}>#</th><th style={cs.pTh}>Checking Point</th>
+                    <th style={{...cs.pTh,width:75}}>Unit</th><th style={cs.pTh}>Specification</th>
+                    <th style={{...cs.pTh,width:110}}>Instrument</th><th style={{...cs.pTh,width:32}}></th>
+                  </tr></thead><tbody>
+                    {visualParams.map((p,i)=>(
+                      <tr key={p.id}>
+                        <td style={{...cs.pTd,textAlign:'center',color:T.textMuted,fontWeight:600,fontSize:10}}>{i+1}</td>
+                        <td style={cs.pTd}><input style={cs.pIn} placeholder="e.g., Surface Finish" value={p.checkingPoint} onChange={e=>upVP(p.id,'checkingPoint',e.target.value)}/></td>
+                        <td style={cs.pTd}><select style={cs.pSel} value={p.unit} onChange={e=>upVP(p.id,'unit',e.target.value)}>{unitOpts.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></td>
+                        <td style={cs.pTd}><input style={cs.pIn} placeholder="e.g., No scratches" value={p.specification} onChange={e=>upVP(p.id,'specification',e.target.value)}/></td>
+                        <td style={cs.pTd}><select style={cs.pSel} value={p.instrumentName} onChange={e=>upVP(p.id,'instrumentName',e.target.value)}>{instOpts.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></td>
+                        <td style={{...cs.pTd,textAlign:'center'}}><button type="button" style={{...cs.pDel,color:visualParams.length===1?'#ddd':T.danger}} onClick={()=>rmVP(p.id)} disabled={visualParams.length===1}><Trash2 size={12}/></button></td>
+                      </tr>
+                    ))}
+                  </tbody></table>
+                )}
+              </>)}
+
+              {/* FUNCTIONAL PARAMS */}
+              {functionalEnabled&&(<>
+                <div style={cs.pHdr}>
+                  <div style={cs.pTitle}><Wrench size={13} color={T.primary}/><span>Functional Parameters</span><span style={cs.pCnt}>{functionalParams.length}</span></div>
+                  <div style={{display:'flex',gap:5,alignItems:'center'}}>
+                    <button type="button" style={cs.pAdd} onClick={addFP}><Plus size={11}/> Add</button>
+                    <button type="button" style={cs.colBtn} onClick={()=>setFunctionalCollapsed(!functionalCollapsed)}>{functionalCollapsed?<ChevronDown size={15}/>:<ChevronUp size={15}/>}</button>
+                  </div>
+                </div>
+                {!functionalCollapsed&&(
+                  <table style={cs.pTbl}><thead><tr>
+                    <th style={{...cs.pTh,width:32}}>#</th><th style={cs.pTh}>Checking Point</th>
+                    <th style={{...cs.pTh,width:65}}>Unit</th><th style={cs.pTh}>Specification</th>
+                    <th style={{...cs.pTh,width:95}}>Instrument</th>
+                    <th style={{...cs.pTh,width:65}}>Min</th><th style={{...cs.pTh,width:65}}>Max</th>
+                    <th style={{...cs.pTh,width:32}}></th>
+                  </tr></thead><tbody>
+                    {functionalParams.map((p,i)=>(
+                      <tr key={p.id}>
+                        <td style={{...cs.pTd,textAlign:'center',color:T.textMuted,fontWeight:600,fontSize:10}}>{i+1}</td>
+                        <td style={cs.pTd}><input style={cs.pIn} placeholder="e.g., Length" value={p.checkingPoint} onChange={e=>upFP(p.id,'checkingPoint',e.target.value)}/></td>
+                        <td style={cs.pTd}><select style={cs.pSel} value={p.unit} onChange={e=>upFP(p.id,'unit',e.target.value)}>{unitOpts.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></td>
+                        <td style={cs.pTd}><input style={cs.pIn} placeholder="e.g., 250mm ±0.5" value={p.specification} onChange={e=>upFP(p.id,'specification',e.target.value)}/></td>
+                        <td style={cs.pTd}><select style={cs.pSel} value={p.instrumentName} onChange={e=>upFP(p.id,'instrumentName',e.target.value)}>{instOpts.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></td>
+                        <td style={cs.pTd}><input style={cs.pIn} placeholder="Min" value={p.toleranceMin} onChange={e=>upFP(p.id,'toleranceMin',e.target.value)}/></td>
+                        <td style={cs.pTd}><input style={cs.pIn} placeholder="Max" value={p.toleranceMax} onChange={e=>upFP(p.id,'toleranceMax',e.target.value)}/></td>
+                        <td style={{...cs.pTd,textAlign:'center'}}><button type="button" style={{...cs.pDel,color:functionalParams.length===1?'#ddd':T.danger}} onClick={()=>rmFP(p.id)} disabled={functionalParams.length===1}><Trash2 size={12}/></button></td>
+                      </tr>
+                    ))}
+                  </tbody></table>
+                )}
+              </>)}
+
+              {/* PARAMETER SUMMARY */}
+              {(visualEnabled||functionalEnabled)&&totP>0&&(<>
+                <div style={cs.sumBar} onClick={()=>setShowParamSummary(!showParamSummary)}>
+                  <div style={cs.sumTitle}>
+                    <CheckCircle size={13}/><span>{totP} checkpoint{totP!==1?'s':''} defined</span>
+                    {visualEnabled&&<span style={cs.sumPill('visual')}><Eye size={9}/> {fVC}</span>}
+                    {functionalEnabled&&<span style={cs.sumPill('functional')}><Wrench size={9}/> {fFC}</span>}
+                  </div>
+                  {showParamSummary?<ChevronUp size={15} color={T.success}/>:<ChevronDown size={15} color={T.success}/>}
+                </div>
+                {showParamSummary&&(<div style={{marginTop:4}}>
+                  {visualEnabled&&fVC>0&&(
+                    <table style={cs.sumTbl}><thead><tr>
+                      <th style={{...cs.sumTh,width:28}}>#</th><th style={cs.sumTh}>Checking Point</th>
+                      <th style={cs.sumTh}>Unit</th><th style={cs.sumTh}>Specification</th><th style={cs.sumTh}>Instrument</th>
+                    </tr></thead><tbody>
+                      {visualParams.filter(p=>p.checkingPoint.trim()).map((p,i)=>(
+                        <tr key={p.id}><td style={cs.sumTd}>{i+1}</td><td style={{...cs.sumTd,fontWeight:500}}>{p.checkingPoint}</td>
+                        <td style={cs.sumTd}>{p.unit||'—'}</td><td style={cs.sumTd}>{p.specification||'—'}</td>
+                        <td style={cs.sumTd}>{p.instrumentName||'—'}</td></tr>
+                      ))}
+                    </tbody></table>
+                  )}
+                  {functionalEnabled&&fFC>0&&(
+                    <table style={{...cs.sumTbl,marginTop:6}}><thead><tr>
+                      <th style={{...cs.sumTh,width:28}}>#</th><th style={cs.sumTh}>Checking Point</th>
+                      <th style={cs.sumTh}>Unit</th><th style={cs.sumTh}>Specification</th><th style={cs.sumTh}>Instrument</th>
+                      <th style={cs.sumTh}>Min</th><th style={cs.sumTh}>Max</th>
+                    </tr></thead><tbody>
+                      {functionalParams.filter(p=>p.checkingPoint.trim()).map((p,i)=>(
+                        <tr key={p.id}><td style={cs.sumTd}>{i+1}</td><td style={{...cs.sumTd,fontWeight:500}}>{p.checkingPoint}</td>
+                        <td style={cs.sumTd}>{p.unit||'—'}</td><td style={cs.sumTd}>{p.specification||'—'}</td>
+                        <td style={cs.sumTd}>{p.instrumentName||'—'}</td>
+                        <td style={cs.sumTd}>{p.toleranceMin||'—'}</td><td style={cs.sumTd}>{p.toleranceMax||'—'}</td></tr>
+                      ))}
+                    </tbody></table>
+                  )}
+                </div>)}
+              </>)}
+            </div>
+          </div>
+
+          {/* ═ FOOTER ═ */}
+          <div style={{...cs.sec,marginBottom:0}}>
+            <div style={cs.ftr}>
+              <button type="button" style={cs.btnG} onClick={handleReset}><RefreshCw size={12}/> Reset Form</button>
+              <div style={cs.ftrR}>
+                <button type="button" style={cs.btnO} onClick={()=>navigate('/admin/component-master')}>Cancel</button>
+                <button type="submit" style={{...cs.btnP,opacity:isSubmitting?.7:1}} disabled={isSubmitting}>
+                  <Save size={12}/> {isSubmitting?'Saving...':(isEditing?'Update Component':'Save Component')}
+                </button>
+              </div>
+            </div>
+          </div>
+
         </form>
       </div>
 
-      {}
       <SuccessModal
         show={showSuccess}
         title={isEditing ? 'Component Updated!' : 'Component Created!'}
         message={`${formData.partCode} - ${formData.partName} has been successfully ${isEditing ? 'updated' : 'registered'}.`}
-        onClose={() => {
-          setShowSuccess(false);
-          navigate('/admin/component-master');
-        }}
+        onClose={() => { setShowSuccess(false); navigate('/admin/component-master'); }}
         onAction={isEditing ? undefined : handleCreateAnother}
         actionLabel="Create Another"
       />
-      </>
-      )}
     </div>
   );
 };
 
 export default ComponentMasterEntryPage;
+
