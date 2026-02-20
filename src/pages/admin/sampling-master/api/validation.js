@@ -281,6 +281,7 @@ export const getInitialQualityPlanState = () => ({
   requiresFunctional: false,
   documentNumber: '',
   status: 'draft',
+  stages:[],
 });
 
 
