@@ -22,27 +22,441 @@ import {
   Package,
   Hash,
   Shield,
-  Info,
-  RefreshCw
+  Info
 } from 'lucide-react';
 import { Header, Card, StatCard, Button, Badge } from '../../components/common';
 import { colors, shadows, borderRadius } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// API — Centralized Checker Service (replaces inline checkerApiService)
-// ═══════════════════════════════════════════════════════════════════════════════
-import {
-  getCheckerInspections,
-  getCheckerDashboardStats,
-  approveInspection,
-  rejectInspection,
-} from '../../api/checkerService';
+
+const checkerApiService = {
 
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// REJECT MODAL
-// ═══════════════════════════════════════════════════════════════════════════════
+  getInspections: async (status = 'all') => {
+
+
+    return { success: true, data: [] };
+  },
+
+
+  approveInspection: async (inspectionId, payload) => {
+
+
+    await new Promise(resolve => setTimeout(resolve, 600));
+    return {
+      success: true,
+      data: {
+        id: inspectionId,
+        status: 'validated',
+        checkerName: payload.checkerName,
+        checkerDate: new Date().toISOString(),
+        remarks: payload.remarks,
+      }
+    };
+  },
+
+
+  rejectInspection: async (inspectionId, payload) => {
+
+
+    await new Promise(resolve => setTimeout(resolve, 600));
+    return {
+      success: true,
+      data: {
+        id: inspectionId,
+        status: 'rejected',
+        checkerName: payload.checkerName,
+        checkerDate: new Date().toISOString(),
+        remarks: payload.remarks,
+      }
+    };
+  },
+};
+
+
+const initialMockValidations = [
+
+  {
+    id: "INS-2026-0350",
+    jobId: "JOB-AACS-173",
+    batchNo: "25-12-002",
+    productName: "3PIN GILLARD MALE & FEMALE",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2025-12-27T09:00:00",
+    checkpoints: 3,
+    passedCheckpoints: 3,
+    failedCheckpoints: 0,
+    status: "pending_review",
+    priority: "normal",
+    notes: "All checkpoints passed. Visual inspection completed.",
+    checkerRemarks: "",
+    checkerDate: null,
+  },
+  {
+    id: "RCNA-001",
+    jobId: "JOB-RCNA-001",
+    batchNo: "26-01-001",
+    productName: "CHANNEL FRAME - REGULAR",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2026-01-14T09:30:00",
+    checkpoints: 20,
+    passedCheckpoints: 20,
+    failedCheckpoints: 0,
+    status: "pending_review",
+    priority: "high",
+    notes: "Comprehensive dimensional inspection completed. All 18 measurement checkpoints within tolerance.",
+    checkerRemarks: "",
+    checkerDate: null,
+  },
+  {
+    id: "VAL-003",
+    jobId: "JOB-RCNA-011",
+    batchNo: "26-01-002",
+    productName: "CHANNEL CORRUGATED BOX-R",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2026-01-09T10:00:00",
+    checkpoints: 6,
+    passedCheckpoints: 6,
+    failedCheckpoints: 0,
+    status: "pending_review",
+    priority: "normal",
+    notes: "Packaging material inspection. Dimensions and ply count verified.",
+    checkerRemarks: "",
+    checkerDate: null,
+  },
+  {
+    id: "VAL-004",
+    jobId: "JOB-RCNA-034",
+    batchNo: "25-11-001",
+    productName: "BEARING-6008",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2025-11-26T09:00:00",
+    checkpoints: 3,
+    passedCheckpoints: 3,
+    failedCheckpoints: 0,
+    status: "pending_review",
+    priority: "normal",
+    notes: "Visual inspection for bearing part number and damage check completed.",
+    checkerRemarks: "",
+    checkerDate: null,
+  },
+  {
+    id: "VAL-005",
+    jobId: "JOB-RCNA-035",
+    batchNo: "26-01-003",
+    productName: "90 DEGREE LOCK & NUT",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2026-01-13T09:30:00",
+    checkpoints: 10,
+    passedCheckpoints: 10,
+    failedCheckpoints: 0,
+    status: "pending_review",
+    priority: "high",
+    notes: "Precision dimensional inspection completed. All measurements within specified tolerances.",
+    checkerRemarks: "",
+    checkerDate: null,
+  },
+  {
+    id: "INS-2026-0354",
+    jobId: "JOB-RCNA-104",
+    batchNo: "25-11-001",
+    productName: "EC REP STICKER",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2025-11-13T09:00:00",
+    checkpoints: 3,
+    passedCheckpoints: 3,
+    failedCheckpoints: 0,
+    status: "pending_review",
+    priority: "normal",
+    notes: "Artwork verification and visual inspection completed.",
+    checkerRemarks: "",
+    checkerDate: null,
+  },
+
+
+  {
+    id: "VAL-007",
+    jobId: "JOB-RSFA-061",
+    batchNo: "26-01-001",
+    productName: "3M.M HD WASHER",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2026-01-09T10:30:00",
+    checkpoints: 5,
+    passedCheckpoints: 5,
+    failedCheckpoints: 0,
+    status: "validated",
+    priority: "normal",
+    notes: "Washer dimensional inspection - inner/outer diameter and thickness verified.",
+    checkerRemarks: "All measurements verified and within tolerance. Approved.",
+    checkerDate: "2026-01-09T14:20:00",
+  },
+  {
+    id: "VAL-008",
+    jobId: "JOB-EEWA-029",
+    batchNo: "26-01-002",
+    productName: "2 CORE WIRE COIL-23/60 T.F.R",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2026-01-19T09:00:00",
+    checkpoints: 3,
+    passedCheckpoints: 3,
+    failedCheckpoints: 0,
+    status: "validated",
+    priority: "normal",
+    notes: "Electrical wire coil specification and damage check completed.",
+    checkerRemarks: "Wire coil specs verified. Approved for store transfer.",
+    checkerDate: "2026-01-19T11:45:00",
+  },
+  {
+    id: "INS-2026-0228",
+    jobId: "JOB-EETD-034",
+    batchNo: "26-01-003",
+    productName: "29V/3A TRANSFORMER",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2026-01-13T11:00:00",
+    checkpoints: 6,
+    passedCheckpoints: 6,
+    failedCheckpoints: 0,
+    status: "validated",
+    priority: "high",
+    notes: "Electrical output voltage testing completed. All voltage outputs within tolerance.",
+    checkerRemarks: "Output voltages verified independently. All within spec.",
+    checkerDate: "2026-01-13T15:30:00",
+  },
+  {
+    id: "INS-2026-0276",
+    jobId: "JOB-RUBA-001",
+    batchNo: "26-01-001",
+    productName: "M.S BASE PLATE",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2026-01-14T10:00:00",
+    checkpoints: 10,
+    passedCheckpoints: 10,
+    failedCheckpoints: 0,
+    status: "validated",
+    priority: "high",
+    notes: "Metal base plate dimensional inspection. All measurements verified.",
+    checkerRemarks: "Dimensional verification complete. Approved.",
+    checkerDate: "2026-01-14T14:00:00",
+  },
+  {
+    id: "VAL-V01",
+    jobId: "JOB-RSFA-080",
+    batchNo: "26-01-005",
+    productName: "RUBBER GASKET O-RING",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2026-01-15T08:30:00",
+    checkpoints: 4,
+    passedCheckpoints: 4,
+    failedCheckpoints: 0,
+    status: "validated",
+    priority: "normal",
+    notes: "Dimensional and hardness tests completed. All within spec.",
+    checkerRemarks: "Verified. Shore hardness and dimensions OK.",
+    checkerDate: "2026-01-15T11:00:00",
+  },
+  {
+    id: "VAL-V02",
+    jobId: "JOB-EEWA-044",
+    batchNo: "26-01-006",
+    productName: "POWER CABLE 3-PIN 6A",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2026-01-16T09:00:00",
+    checkpoints: 5,
+    passedCheckpoints: 5,
+    failedCheckpoints: 0,
+    status: "validated",
+    priority: "normal",
+    notes: "Continuity and insulation resistance tests passed.",
+    checkerRemarks: "Electrical safety parameters verified. Approved.",
+    checkerDate: "2026-01-16T12:30:00",
+  },
+  {
+    id: "VAL-V03",
+    jobId: "JOB-EETD-050",
+    batchNo: "26-01-007",
+    productName: "LED INDICATOR PANEL GREEN",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2026-01-17T10:00:00",
+    checkpoints: 4,
+    passedCheckpoints: 4,
+    failedCheckpoints: 0,
+    status: "validated",
+    priority: "normal",
+    notes: "Visual and functional check of LED indicators completed.",
+    checkerRemarks: "All LEDs functional. Brightness within range.",
+    checkerDate: "2026-01-17T13:15:00",
+  },
+  {
+    id: "VAL-V04",
+    jobId: "JOB-AACS-200",
+    batchNo: "26-01-008",
+    productName: "ALUMINIUM BRACKET L-TYPE",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2026-01-18T08:45:00",
+    checkpoints: 8,
+    passedCheckpoints: 8,
+    failedCheckpoints: 0,
+    status: "validated",
+    priority: "high",
+    notes: "All 8 dimensional parameters checked. Within tolerance.",
+    checkerRemarks: "Critical dimensions verified. Surface finish acceptable.",
+    checkerDate: "2026-01-18T14:00:00",
+  },
+  {
+    id: "VAL-V05",
+    jobId: "JOB-RCNA-120",
+    batchNo: "26-01-009",
+    productName: "NYLON SPACER 6MM",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2026-01-20T09:30:00",
+    checkpoints: 3,
+    passedCheckpoints: 3,
+    failedCheckpoints: 0,
+    status: "validated",
+    priority: "normal",
+    notes: "Dimensional check completed for nylon spacers.",
+    checkerRemarks: "Dimensions OK. Approved.",
+    checkerDate: "2026-01-20T11:00:00",
+  },
+  {
+    id: "VAL-V06",
+    jobId: "JOB-EEWA-055",
+    batchNo: "26-01-010",
+    productName: "FUSE HOLDER 5A PANEL MOUNT",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2026-01-21T10:00:00",
+    checkpoints: 4,
+    passedCheckpoints: 4,
+    failedCheckpoints: 0,
+    status: "validated",
+    priority: "normal",
+    notes: "Contact resistance and fitment tests passed.",
+    checkerRemarks: "Tested and verified. Approved for store.",
+    checkerDate: "2026-01-21T13:30:00",
+  },
+  {
+    id: "VAL-V07",
+    jobId: "JOB-RSFA-090",
+    batchNo: "26-01-011",
+    productName: "SPRING TENSION 4.5N",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2026-01-22T08:00:00",
+    checkpoints: 3,
+    passedCheckpoints: 3,
+    failedCheckpoints: 0,
+    status: "validated",
+    priority: "normal",
+    notes: "Tension force measurement within 4.3–4.7N range.",
+    checkerRemarks: "Force values verified. Within spec.",
+    checkerDate: "2026-01-22T10:30:00",
+  },
+  {
+    id: "VAL-V08",
+    jobId: "JOB-EETD-070",
+    batchNo: "26-01-012",
+    productName: "CAPACITOR 470UF 25V",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2026-01-23T09:15:00",
+    checkpoints: 3,
+    passedCheckpoints: 3,
+    failedCheckpoints: 0,
+    status: "validated",
+    priority: "normal",
+    notes: "Capacitance and ESR measured. All within datasheet limits.",
+    checkerRemarks: "Electrical parameters OK. Approved.",
+    checkerDate: "2026-01-23T11:45:00",
+  },
+  {
+    id: "VAL-V09",
+    jobId: "JOB-AACS-210",
+    batchNo: "26-01-013",
+    productName: "SCREW M4X12 SS304",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2026-01-24T10:30:00",
+    checkpoints: 4,
+    passedCheckpoints: 4,
+    failedCheckpoints: 0,
+    status: "validated",
+    priority: "normal",
+    notes: "Thread gauge and dimensional check completed.",
+    checkerRemarks: "Thread and dimension verified. Approved.",
+    checkerDate: "2026-01-24T13:00:00",
+  },
+  {
+    id: "VAL-V10",
+    jobId: "JOB-RCNA-130",
+    batchNo: "26-01-014",
+    productName: "PLASTIC KNOB 25MM DIA",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2026-01-25T08:30:00",
+    checkpoints: 3,
+    passedCheckpoints: 3,
+    failedCheckpoints: 0,
+    status: "validated",
+    priority: "normal",
+    notes: "Visual and dimensional inspection completed.",
+    checkerRemarks: "No defects. Dimensions within tolerance.",
+    checkerDate: "2026-01-25T10:15:00",
+  },
+
+
+  {
+    id: "REJ-001",
+    jobId: "JOB-EETD-045",
+    batchNo: "26-01-004",
+    productName: "PCB CONTROL BOARD V2.1",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2026-01-20T09:00:00",
+    checkpoints: 12,
+    passedCheckpoints: 9,
+    failedCheckpoints: 3,
+    status: "rejected",
+    priority: "high",
+    notes: "3 of 12 checkpoints failed — solder joint defects found on IC U3 and U7.",
+    checkerRemarks: "Solder defects confirmed upon visual re-check. Returning to maker for re-inspection. IC U3 pin 4 cold joint, U7 bridge on pins 12-13.",
+    checkerDate: "2026-01-20T14:30:00",
+  },
+  {
+    id: "REJ-002",
+    jobId: "JOB-RCNA-099",
+    batchNo: "26-01-005",
+    productName: "HOUSING COVER - PLASTIC",
+    maker: "Radhakrishnan.S",
+    makerDept: "QC Department",
+    submittedAt: "2026-01-22T10:00:00",
+    checkpoints: 8,
+    passedCheckpoints: 6,
+    failedCheckpoints: 2,
+    status: "rejected",
+    priority: "normal",
+    notes: "Dimensional mismatch on snap-fit tabs. 2 checkpoints failed.",
+    checkerRemarks: "Tab thickness out of tolerance by 0.3mm. Cannot assemble with base plate. Return to maker — vendor issue likely.",
+    checkerDate: "2026-01-22T15:00:00",
+  },
+];
+
+
 const RejectModal = ({ inspection, onConfirm, onCancel, isProcessing }) => {
   const [remarks, setRemarks] = useState('');
   const textareaRef = useRef(null);
@@ -136,9 +550,6 @@ const RejectModal = ({ inspection, onConfirm, onCancel, isProcessing }) => {
 };
 
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// APPROVE MODAL
-// ═══════════════════════════════════════════════════════════════════════════════
 const ApproveModal = ({ inspection, onConfirm, onCancel, isProcessing }) => {
   const [remarks, setRemarks] = useState('');
 
@@ -214,9 +625,6 @@ const ApproveModal = ({ inspection, onConfirm, onCancel, isProcessing }) => {
 };
 
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// TOAST
-// ═══════════════════════════════════════════════════════════════════════════════
 const Toast = ({ message, type, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 3500);
@@ -254,9 +662,6 @@ const Toast = ({ message, type, onClose }) => {
 };
 
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// VALIDATION CARD
-// ═══════════════════════════════════════════════════════════════════════════════
 const ValidationCard = ({ validation, onApprove, onReject, onViewDetails }) => {
   const passRate = validation.checkpoints > 0
     ? Math.round((validation.passedCheckpoints / validation.checkpoints) * 100)
@@ -288,7 +693,7 @@ const ValidationCard = ({ validation, onApprove, onReject, onViewDetails }) => {
         </span>
 
         {}
-        {(validation.status === 'validated' || validation.status === 'approved') && (
+        {validation.status === 'validated' && (
           <span style={{ ...cardStyles.statusBadge, background: `${colors.success}10`, color: colors.success }}>
             <CheckCircle2 size={14} /> Validated
           </span>
@@ -309,17 +714,17 @@ const ValidationCard = ({ validation, onApprove, onReject, onViewDetails }) => {
           <Hash size={14} /> Batch: {validation.batchNo}
         </span>
         <span style={cardStyles.metaItem}>
-          <User size={14} /> {validation.maker || validation.makerName}
+          <User size={14} /> {validation.maker}
         </span>
       </div>
 
       {}
       <div style={cardStyles.notes}>
-        <span style={cardStyles.notesLabel}>Notes:</span> {validation.notes || validation.makerRemarks || '—'}
+        <span style={cardStyles.notesLabel}>Notes:</span> {validation.notes}
       </div>
 
       {}
-      {validation.checkerRemarks && (validation.status === 'validated' || validation.status === 'approved' || validation.status === 'rejected') && (
+      {validation.checkerRemarks && (validation.status === 'validated' || validation.status === 'rejected') && (
         <div style={{
           ...cardStyles.checkerRemarks,
           background: validation.status === 'rejected' ? `${colors.danger}06` : `${colors.success}06`,
@@ -392,9 +797,6 @@ const ValidationCard = ({ validation, onApprove, onReject, onViewDetails }) => {
 };
 
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// SUMMARY ITEM
-// ═══════════════════════════════════════════════════════════════════════════════
 const SummaryItem = ({ icon: Icon, label, value, color }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0' }}>
     <div style={{
@@ -411,154 +813,55 @@ const SummaryItem = ({ icon: Icon, label, value, color }) => (
 );
 
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// LOADING SPINNER
-// ═══════════════════════════════════════════════════════════════════════════════
-const LoadingState = () => (
-  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '80px 20px' }}>
-    <div style={{ textAlign: 'center' }}>
-      <RefreshCw size={32} style={{ animation: 'spin 1s linear infinite', color: colors.neutral[400] }} />
-      <p style={{ marginTop: 12, color: colors.neutral[500], fontSize: 14 }}>Loading inspections…</p>
-    </div>
-  </div>
-);
-
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// ERROR STATE
-// ═══════════════════════════════════════════════════════════════════════════════
-const ErrorState = ({ message, onRetry }) => (
-  <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-    <div style={{ color: colors.danger, marginBottom: 12 }}>
-      <AlertTriangle size={40} />
-    </div>
-    <h3 style={{ fontSize: 18, fontWeight: 600, color: colors.neutral[600], margin: '0 0 8px' }}>
-      Failed to load data
-    </h3>
-    <p style={{ fontSize: 14, color: colors.neutral[400], marginBottom: 16 }}>{message}</p>
-    <button
-      onClick={onRetry}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 8,
-        padding: '10px 20px', borderRadius: 10,
-        border: `1px solid ${colors.neutral[200]}`,
-        background: 'white', color: colors.neutral[700],
-        fontSize: 14, fontWeight: 500, cursor: 'pointer',
-      }}
-    >
-      <RefreshCw size={16} /> Retry
-    </button>
-  </div>
-);
-
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// MAIN COMPONENT — CHECKER DASHBOARD
-// ═══════════════════════════════════════════════════════════════════════════════
 const CheckerDashboard = () => {
   const { user } = useAuth();
-
-  // ── Data state (loaded from API) ──────────────────────────────────────────
-  const [validations, setValidations] = useState([]);
-  const [dashboardStats, setDashboardStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  // ── UI state ──────────────────────────────────────────────────────────────
+  const [validations, setValidations] = useState(initialMockValidations);
   const [selectedTab, setSelectedTab] = useState('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState(null);
   const [processing, setProcessing] = useState(false);
 
-  // ── Modal state ───────────────────────────────────────────────────────────
+
   const [approveTarget, setApproveTarget] = useState(null);
   const [rejectTarget, setRejectTarget] = useState(null);
 
 
-  // ═══ FETCH DATA ON MOUNT ══════════════════════════════════════════════════
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Parallel fetch: inspections + dashboard stats
-      const [inspectionsRes, statsRes] = await Promise.all([
-        getCheckerInspections(),
-        getCheckerDashboardStats(),
-      ]);
-
-      if (inspectionsRes.success) {
-        // Normalize: API uses 'approved', old UI also uses 'validated' — accept both
-        const normalized = (inspectionsRes.data || []).map(item => ({
-          ...item,
-          // Map backend fields to what the card component expects
-          productName: item.productName || item.partName || '',
-          batchNo: item.batchNo || item.lotNumber || '',
-          maker: item.maker || item.makerName || '',
-          notes: item.notes || item.makerRemarks || '',
-        }));
-        setValidations(normalized);
-      }
-
-      if (statsRes?.success && statsRes.data) {
-        setDashboardStats(statsRes.data);
-      }
-    } catch (err) {
-      console.error('[CheckerDashboard] Failed to load data:', err);
-      setError(err.message || 'Failed to load inspections.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-
-  // ═══ DERIVED COUNTS ═══════════════════════════════════════════════════════
   const counts = {
     pending: validations.filter(v => v.status === 'pending_review').length,
-    validated: validations.filter(v => v.status === 'validated' || v.status === 'approved').length,
+    validated: validations.filter(v => v.status === 'validated').length,
     rejected: validations.filter(v => v.status === 'rejected').length,
   };
 
 
-  // ═══ FILTERED LIST ════════════════════════════════════════════════════════
   const filteredValidations = validations.filter(v => {
     const matchesTab = selectedTab === 'pending' ? v.status === 'pending_review'
-      : selectedTab === 'validated' ? (v.status === 'validated' || v.status === 'approved')
+      : selectedTab === 'validated' ? v.status === 'validated'
       : selectedTab === 'rejected' ? v.status === 'rejected'
       : true;
 
     const matchesSearch = !searchQuery ||
-      (v.productName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (v.batchNo || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (v.id || '').toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (v.maker || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (v.partCode || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (v.irNumber || '').toLowerCase().includes(searchQuery.toLowerCase());
+      v.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      v.batchNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      v.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      v.maker.toLowerCase().includes(searchQuery.toLowerCase());
 
     return matchesTab && matchesSearch;
   });
 
 
-  // ═══ APPROVE HANDLER ══════════════════════════════════════════════════════
   const handleApprove = useCallback(async (remarks) => {
     if (!approveTarget) return;
     setProcessing(true);
 
     try {
-      const result = await approveInspection(approveTarget.id, {
-        checkerRemarks: remarks || 'Approved by checker.',
+      const result = await checkerApiService.approveInspection(approveTarget.id, {
         remarks: remarks || 'Approved by checker.',
         checkerName: user?.name || 'Priya Sharma',
-        checkerId: user?.employeeId || user?.id || 'EMP023',
-        checkerDate: new Date().toISOString(),
+        checkerId: user?.employeeId || 'EMP023',
       });
 
       if (result.success) {
-        // Optimistic UI update
+
         setValidations(prev => prev.map(v =>
           v.id === approveTarget.id
             ? {
@@ -571,45 +874,28 @@ const CheckerDashboard = () => {
         ));
         setToast({ message: `✓ "${approveTarget.productName}" approved and moved to Validated`, type: 'success' });
         setApproveTarget(null);
-
-        // Update dashboard stats if available
-        if (dashboardStats) {
-          setDashboardStats(prev => prev ? {
-            ...prev,
-            pendingCount: Math.max(0, (prev.pendingCount || 0) - 1),
-            approvedCount: (prev.approvedCount || 0) + 1,
-            totalReviewed: (prev.totalReviewed || 0) + 1,
-          } : prev);
-        }
       }
     } catch (err) {
-      console.error('[CheckerDashboard] Approve failed:', err);
       setToast({ message: 'Failed to approve. Please try again.', type: 'error' });
     } finally {
       setProcessing(false);
     }
-  }, [approveTarget, user, dashboardStats]);
+  }, [approveTarget, user]);
 
 
-  // ═══ REJECT HANDLER ═══════════════════════════════════════════════════════
   const handleReject = useCallback(async (remarks) => {
     if (!rejectTarget) return;
     setProcessing(true);
 
     try {
-      const result = await rejectInspection(rejectTarget.id, {
-        checkerRemarks: remarks,
+      const result = await checkerApiService.rejectInspection(rejectTarget.id, {
         remarks,
         checkerName: user?.name || 'Priya Sharma',
-        checkerId: user?.employeeId || user?.id || 'EMP023',
-        checkerDate: new Date().toISOString(),
-        rejectionCategory: 'other',
-        rejectionReason: remarks,
-        returnToMaker: true,
+        checkerId: user?.employeeId || 'EMP023',
       });
 
       if (result.success) {
-        // Optimistic UI update
+
         setValidations(prev => prev.map(v =>
           v.id === rejectTarget.id
             ? {
@@ -622,60 +908,24 @@ const CheckerDashboard = () => {
         ));
         setToast({ message: `"${rejectTarget.productName}" rejected and returned to Maker`, type: 'warning' });
         setRejectTarget(null);
-
-        // Update dashboard stats if available
-        if (dashboardStats) {
-          setDashboardStats(prev => prev ? {
-            ...prev,
-            pendingCount: Math.max(0, (prev.pendingCount || 0) - 1),
-            rejectedCount: (prev.rejectedCount || 0) + 1,
-            totalReviewed: (prev.totalReviewed || 0) + 1,
-          } : prev);
-        }
       }
     } catch (err) {
-      console.error('[CheckerDashboard] Reject failed:', err);
       setToast({ message: 'Failed to reject. Please try again.', type: 'error' });
     } finally {
       setProcessing(false);
     }
-  }, [rejectTarget, user, dashboardStats]);
+  }, [rejectTarget, user]);
 
   const handleViewDetails = (validationId) => {
     window.location.href = `/checker/review/${validationId}`;
   };
 
 
-  // ═══ STAT CARDS (API-driven with fallback to local counts) ════════════════
   const stats = [
-    {
-      label: 'Pending Review',
-      value: String(dashboardStats?.pendingCount ?? counts.pending),
-      change: `+${Math.min(dashboardStats?.pendingCount ?? counts.pending, 2)} today`,
-      icon: ListChecks,
-      color: colors.roles?.checker?.primary || '#059669',
-    },
-    {
-      label: 'Validated Today',
-      value: String(dashboardStats?.approvedCount ?? counts.validated),
-      change: dashboardStats?.passRate ? `${dashboardStats.passRate}% pass rate` : '+25% vs avg',
-      icon: CheckCircle2,
-      color: colors.success,
-    },
-    {
-      label: 'Rejected',
-      value: String(dashboardStats?.rejectedCount ?? counts.rejected),
-      change: 'This week',
-      icon: XCircle,
-      color: colors.danger,
-    },
-    {
-      label: 'Avg. Review Time',
-      value: dashboardStats?.avgReviewTimeMinutes ? `${dashboardStats.avgReviewTimeMinutes} min` : '18 min',
-      change: '-5 min',
-      icon: Clock,
-      color: colors.primary,
-    },
+    { label: 'Pending Review', value: String(counts.pending), change: `+${Math.min(counts.pending, 2)} today`, icon: ListChecks, color: colors.roles?.checker?.primary || '#059669' },
+    { label: 'Validated Today', value: String(counts.validated), change: '+25% vs avg', icon: CheckCircle2, color: colors.success },
+    { label: 'Rejected', value: String(counts.rejected), change: 'This week', icon: XCircle, color: colors.danger },
+    { label: 'Avg. Review Time', value: '18 min', change: '-5 min', icon: Clock, color: colors.primary },
   ];
 
   const tabs = [
@@ -745,7 +995,7 @@ const CheckerDashboard = () => {
               <Search size={16} color={colors.neutral[400]} />
               <input
                 type="text"
-                placeholder="Search by product, batch, ID, IR number, or maker..."
+                placeholder="Search by product, batch, ID, or maker..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={styles.searchField}
@@ -763,11 +1013,7 @@ const CheckerDashboard = () => {
 
           {}
           <div style={styles.validationsList}>
-            {loading ? (
-              <LoadingState />
-            ) : error ? (
-              <ErrorState message={error} onRetry={fetchData} />
-            ) : filteredValidations.length === 0 ? (
+            {filteredValidations.length === 0 ? (
               <div style={styles.emptyState}>
                 <div style={styles.emptyIcon}>
                   {selectedTab === 'pending' ? <ListChecks size={48} /> : selectedTab === 'validated' ? <CheckCircle2 size={48} /> : <XCircle size={48} />}
@@ -801,19 +1047,19 @@ const CheckerDashboard = () => {
               <SummaryItem
                 icon={CheckCircle2}
                 label="Approved"
-                value={String(dashboardStats?.approvedCount ?? counts.validated)}
+                value={String(counts.validated)}
                 color={colors.success}
               />
               <SummaryItem
                 icon={XCircle}
                 label="Rejected"
-                value={String(dashboardStats?.rejectedCount ?? counts.rejected)}
+                value={String(counts.rejected)}
                 color={colors.danger}
               />
               <SummaryItem
                 icon={AlertTriangle}
                 label="Pending"
-                value={String(dashboardStats?.pendingCount ?? counts.pending)}
+                value={String(counts.pending)}
                 color={colors.warning}
               />
             </div>
@@ -891,9 +1137,9 @@ const CheckerDashboard = () => {
 };
 
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // STYLES
-// ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 const styles = {
   page: {
     minHeight: '100vh',
