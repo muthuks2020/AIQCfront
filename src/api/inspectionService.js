@@ -226,10 +226,16 @@ export const submitInspection = async (inspectionId, submissionData) => {
     };
   }
 
-  return apiFetch(ENDPOINTS.inspection.submit(inspectionId), {
+  return apiFetch(ENDPOINTS.inspection.submitResult, {
     method: 'POST',
     body: JSON.stringify({
-      inspection_queue_id: inspectionId,
+      inspection_queue_id: parseInt(inspectionId),
+      stage_type: submissionData.stage_type || 'visual',
+      total_checked: submissionData.totalSamples || 0,
+      total_passed: submissionData.totalSamples || 0,
+      total_failed: 0,
+      stage_result: 'pass',
+      remarks: submissionData.remarks || '',
       ...submissionData,
     }),
   });
