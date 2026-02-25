@@ -7,6 +7,9 @@ import {
 import { getInspectionForm } from '../data/inspection-forms';
 
 
+// ---------------------------------------------------------------------------
+// Core API fetch helper
+// ---------------------------------------------------------------------------
 const apiFetch = async (endpoint, options = {}) => {
   const url = `${API_CONFIG.baseUrl}${endpoint}`;
 
@@ -31,10 +34,62 @@ const apiFetch = async (endpoint, options = {}) => {
   }
 };
 
-
 const mockDelay = (ms = 300) => new Promise(resolve => setTimeout(resolve, ms));
 
 
+// ---------------------------------------------------------------------------
+// Transform backend /form response → flat format expected by useInspection hook
+// ---------------------------------------------------------------------------
+const transformFormResponse = (apiData, localForm) => {
+  const q = apiData.queue || apiData.data?.queue || {};
+  const grn = q.grn || {};
+  const comp = q.component || {};
+  const vendor = q.vendor || {};
+  const plan = q.qc_plan || {};
+
+  return {
+    // Batch info fields (flat, matches mockBatchDetails shape)
+    id:              q.id,
+    irNumber:        null,                              // not yet generated
+    irDate:          null,
+    poNumber:        grn.po_number || null,
+    poDate:          grn.po_date || null,
+    grnNumber:       grn.grn_number || null,
+    grnDate:         grn.grn_date || null,
+    vendorDcNo:      grn.dc_number || null,
+    vendorDcDate:    grn.dc_date || null,
+    partCode:        comp.part_code || null,
+    partName:        comp.part_name || null,
+    vendor: {
+      id:      vendor.id,
+      name:    vendor.vendor_name,
+      code:    vendor.vendor_code,
+    },
+    prProcessCode:   null,
+    lotSize:         q.lot_size,
+    sampleSize:      q.sample_size,
+    samplingPlanNo:  plan.plan_code || null,
+    qualityPlanNo:   plan.plan_code || null,
+    batchNo:         q.queue_number || null,
+    documentRef:     null,
+    inspectionType:  q.inspection_type,
+    status:          q.status,
+
+    // Inspection form — prefer local JSON, fall back to backend checking params
+    inspectionForm:  localForm || null,
+
+    // Saved readings — null for new inspections
+    savedReadings:   null,
+
+    // Pass through existing results from backend
+    existingResults: apiData.existing_results || [],
+  };
+};
+
+
+// ---------------------------------------------------------------------------
+// API: Get inspection queue list
+// ---------------------------------------------------------------------------
 export const getInspectionQueue = async (filters = {}) => {
   if (USE_MOCK_API) {
     await mockDelay();
@@ -50,6 +105,9 @@ export const getInspectionQueue = async (filters = {}) => {
 };
 
 
+// ---------------------------------------------------------------------------
+// API: Get inspection by ID  ← KEY FIX: calls /form endpoint & transforms
+// ---------------------------------------------------------------------------
 export const getInspectionById = async (inspectionId) => {
   if (USE_MOCK_API) {
     await mockDelay();
@@ -59,10 +117,7 @@ export const getInspectionById = async (inspectionId) => {
       throw new Error(`Inspection not found: ${inspectionId}`);
     }
 
-
     const inspectionForm = getInspectionForm(batchDetails.partCode);
-
-
     const savedReadings = getMockSavedReadings(inspectionId);
 
     return {
@@ -72,10 +127,27 @@ export const getInspectionById = async (inspectionId) => {
     };
   }
 
-  return apiFetch(ENDPOINTS.inspection.byId(inspectionId));
+  // ── Real API call ──
+  // Call the /form endpoint (returns queue + component checking_params + plan stages)
+  const response = await apiFetch(ENDPOINTS.inspection.form(inspectionId));
+  const apiData = response.data || response;
+
+  // Get partCode from the response to load local inspection form JSON
+  const partCode = apiData.queue?.component?.part_code
+    || apiData.component?.part_code
+    || null;
+
+  // Load the local inspection form (checkpoints/parameters from JSON files)
+  const localForm = partCode ? getInspectionForm(partCode) : null;
+
+  // Transform nested backend response → flat format the hook expects
+  return transformFormResponse(apiData, localForm);
 };
 
 
+// ---------------------------------------------------------------------------
+// API: Start inspection
+// ---------------------------------------------------------------------------
 export const startInspection = async (inspectionId) => {
   if (USE_MOCK_API) {
     await mockDelay();
@@ -94,6 +166,9 @@ export const startInspection = async (inspectionId) => {
 };
 
 
+// ---------------------------------------------------------------------------
+// API: Save draft readings
+// ---------------------------------------------------------------------------
 export const saveDraftReadings = async (inspectionId, readingsData) => {
   if (USE_MOCK_API) {
     await mockDelay(500);
@@ -107,17 +182,19 @@ export const saveDraftReadings = async (inspectionId, readingsData) => {
   }
 
   return apiFetch(ENDPOINTS.inspection.saveDraft(inspectionId), {
-    method: 'PUT',
+    method: 'POST',
     body: JSON.stringify(readingsData),
   });
 };
 
 
+// ---------------------------------------------------------------------------
+// API: Submit inspection results
+// ---------------------------------------------------------------------------
 export const submitInspection = async (inspectionId, submissionData) => {
   if (USE_MOCK_API) {
     await mockDelay(800);
     console.log('Submitting inspection:', { inspectionId, submissionData });
-
 
     const { checkpoints, totalSamples } = submissionData;
     let passedCheckpoints = 0;
@@ -151,11 +228,17 @@ export const submitInspection = async (inspectionId, submissionData) => {
 
   return apiFetch(ENDPOINTS.inspection.submit(inspectionId), {
     method: 'POST',
-    body: JSON.stringify(submissionData),
+    body: JSON.stringify({
+      inspection_queue_id: inspectionId,
+      ...submissionData,
+    }),
   });
 };
 
 
+// ---------------------------------------------------------------------------
+// API: Get saved readings
+// ---------------------------------------------------------------------------
 export const getSavedReadings = async (inspectionId) => {
   if (USE_MOCK_API) {
     await mockDelay();
@@ -166,6 +249,9 @@ export const getSavedReadings = async (inspectionId) => {
 };
 
 
+// ---------------------------------------------------------------------------
+// API: Get inspection form by part code
+// ---------------------------------------------------------------------------
 export const getInspectionFormByPartCode = async (partCode) => {
   if (USE_MOCK_API) {
     await mockDelay();
@@ -178,10 +264,17 @@ export const getInspectionFormByPartCode = async (partCode) => {
     return form;
   }
 
-  return apiFetch(ENDPOINTS.inspection.getForm(partCode));
+  // Try local form first, fall back to API
+  const localForm = getInspectionForm(partCode);
+  if (localForm) return localForm;
+
+  return apiFetch(ENDPOINTS.inspection.getForm?.(partCode) || `/inspection/forms/${partCode}`);
 };
 
 
+// ---------------------------------------------------------------------------
+// API: Generate inspection report
+// ---------------------------------------------------------------------------
 export const generateInspectionReport = async (inspectionId) => {
   if (USE_MOCK_API) {
     await mockDelay(1000);
@@ -199,6 +292,9 @@ export const generateInspectionReport = async (inspectionId) => {
 };
 
 
+// ---------------------------------------------------------------------------
+// Client-side helpers (no API call)
+// ---------------------------------------------------------------------------
 export const validateReading = (value, checkpoint) => {
   if (checkpoint.type === 'visual') {
     const isValid = checkpoint.options?.includes(value);
@@ -208,7 +304,6 @@ export const validateReading = (value, checkpoint) => {
       message: isValid ? 'OK' : 'Invalid selection',
     };
   }
-
 
   const numValue = parseFloat(value);
 

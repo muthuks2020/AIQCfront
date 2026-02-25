@@ -1,5 +1,4 @@
 
-
 export const USE_MOCK_API = false;
 
 export const API_CONFIG = {
@@ -99,10 +98,8 @@ export const getHeaders = () => {
   return {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    // Auth token
-    ...(localStorage.getItem('authToken') && {
-      'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-    }),
+    // Auth token — always send, fallback to dev token for dummy users
+    'Authorization': `Bearer ${localStorage.getItem('authToken') || 'local-dev-token-2026'}`,
     // User context headers (required by backend)
     'X-User-Id':    String(user.id || user.userId || '1'),
     'X-User-Name':  user.name || 'Admin User',
