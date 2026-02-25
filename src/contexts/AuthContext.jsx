@@ -162,7 +162,7 @@ export const AuthProvider = ({ children }) => {
         }));
 
         // Store API bearer token for backend authentication
-        localStorage.setItem('authToken', 'staging-token-change-me-2026');
+        localStorage.setItem('authToken', 'local-token-change-me-2026');
 
         setIsLoading(false);
         return { success: true, user: safeUser };

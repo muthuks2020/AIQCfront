@@ -1,16 +1,8 @@
-/**
- * =============================================================================
- * API Configuration
- * =============================================================================
- * Central config for the entire app's API layer.
- * Toggle USE_MOCK_API to switch ALL services between mock and real backend.
- * =============================================================================
- */
 
-export const USE_MOCK_API = true;
+export const USE_MOCK_API = false;
 
 export const API_CONFIG = {
-  baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
+  baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api',
   odooUrl: import.meta.env.VITE_ODOO_API_URL || 'http://localhost:8069/api',
   timeout: 30000,
 };

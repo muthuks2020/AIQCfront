@@ -4,15 +4,14 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 8005,
+    port: 5000,
     open: true,
-    allowedHosts: ['demo.eyehms.com'], 
-  
+    allowedHosts: ['demo.eyehms.com'],
+
     proxy: {
       '/api/v1': {
-        target: 'https://ssei.eyehms.com',
+        target: 'http://localhost:5001',
         changeOrigin: true,
-        secure: true,
       },
     },
   },

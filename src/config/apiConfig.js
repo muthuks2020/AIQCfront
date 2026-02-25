@@ -1,14 +1,5 @@
-/**
- * =============================================================================
- * Global API Config  (src/config/apiConfig.js)
- * =============================================================================
- * High-level endpoint registry used across the app.
- * This is the "global" config; module-specific configs (like
- * componentMasterApi.js or samplingMasterApi.js) import their own baseUrl.
- * =============================================================================
- */
 
-export const USE_MOCK_DATA = true;
+export const USE_MOCK_DATA = false;
 
 export const API_BASE_URL = '/api/v1';
 
