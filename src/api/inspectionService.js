@@ -226,7 +226,7 @@ export const submitInspection = async (inspectionId, submissionData) => {
     };
   }
 
-  return apiFetch(ENDPOINTS.inspection.submitResult, {
+  const response = await apiFetch(ENDPOINTS.inspection.submitResult, {
     method: 'POST',
     body: JSON.stringify({
       inspection_queue_id: parseInt(inspectionId),
@@ -239,6 +239,33 @@ export const submitInspection = async (inspectionId, submissionData) => {
       ...submissionData,
     }),
   });
+
+  // Transform backend response to match the format SuccessModal expects
+  const apiData = response.data || response;
+  const totalCheckpoints = Object.keys(submissionData.checkpoints || {}).length || 1;
+  let passedCheckpoints = 0;
+  let failedCheckpoints = 0;
+
+  Object.values(submissionData.checkpoints || {}).forEach(cp => {
+    if (cp.result === 'Accepted') passedCheckpoints++;
+    else if (cp.result === 'Rejected') failedCheckpoints++;
+    else passedCheckpoints++; // default to passed
+  });
+
+  return {
+    success: true,
+    message: response.message || 'Inspection submitted successfully',
+    inspectionId,
+    irNumber: apiData.result_number || null,
+    submittedAt: new Date().toISOString(),
+    result: {
+      totalCheckpoints,
+      passedCheckpoints,
+      failedCheckpoints,
+      passRate: ((passedCheckpoints / totalCheckpoints) * 100).toFixed(1),
+      overallResult: apiData.overall_result === 'accept' ? 'Accept Lot' : 'Reject Lot',
+    },
+  };
 };
 
 
