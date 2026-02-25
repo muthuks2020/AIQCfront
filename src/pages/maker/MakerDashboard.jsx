@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from 'react';
+
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ClipboardList,
   Clock,
@@ -9,246 +12,103 @@ import {
   Package,
   ChevronRight,
   Timer,
-  User
+  User,
+  Loader,
+  RefreshCw,
 } from 'lucide-react';
 import { Header, Card, StatCard, Button, Badge } from '../../components/common';
 import { colors, shadows, borderRadius } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
+import { getInspectionQueue } from '../../api/inspectionService';   // ✅ FIX #5: Import API
 
-
-const mockPendingJobs = [
-  {
-    "id": "INS-2026-0350",
-    "jobId": "JOB-AACS-173",
-    "batchNo": "25-12-002",
-    "productName": "3PIN GILLARD MALE & FEMALE",
-    "maker": "Radhakrishnan.S",
-    "makerDept": "QC Department",
-    "submittedAt": "2025-12-27T09:00:00",
-    "checkpoints": 3,
-    "passedCheckpoints": 3,
-    "failedCheckpoints": 0,
-    "status": "approved",
-    "priority": "normal",
-    "notes": "All checkpoints passed. Visual inspection completed.",
-    "grnDate": "2025-12-27",
-    "vendorInvoiceNo": "INV-2025-0350",
-    "vendorDate": "2025-12-26",
-    "serviceDate": null
-  },
-  {
-    "id": "INS-2026-0302",
-    "jobId": "JOB-RCNA-001",
-    "batchNo": "26-01-001",
-    "productName": "CHANNEL FRAME - REGULAR",
-    "maker": "Radhakrishnan.S",
-    "makerDept": "QC Department",
-    "submittedAt": "2026-01-14T09:30:00",
-    "checkpoints": 20,
-    "passedCheckpoints": 20,
-    "failedCheckpoints": 0,
-    "status": "approved",
-    "priority": "high",
-    "notes": "Comprehensive dimensional inspection completed. All 18 measurement checkpoints within tolerance.",
-    "grnDate": "2026-01-14",
-    "vendorInvoiceNo": "INV-RCNA-2026-001",
-    "vendorDate": "2026-01-13",
-    "serviceDate": null
-  },
-  {
-    "id": "INS-2026-0352",
-    "jobId": "JOB-RCNA-011",
-    "batchNo": "26-01-002",
-    "productName": "CHANNEL CORRUGATED BOX-R",
-    "maker": "Radhakrishnan.S",
-    "makerDept": "QC Department",
-    "submittedAt": "2026-01-09T10:00:00",
-    "checkpoints": 6,
-    "passedCheckpoints": 6,
-    "failedCheckpoints": 0,
-    "status": "approved",
-    "priority": "normal",
-    "notes": "Packaging material inspection. Dimensions and ply count verified.",
-    "grnDate": "2026-01-09",
-    "vendorInvoiceNo": "INV-RCNA-2026-011",
-    "vendorDate": "2026-01-08",
-    "serviceDate": null
-  },
-  {
-    "id": "VAL-004",
-    "jobId": "JOB-RCNA-034",
-    "batchNo": "25-11-001",
-    "productName": "BEARING-6008",
-    "maker": "Radhakrishnan.S",
-    "makerDept": "QC Department",
-    "submittedAt": "2025-11-26T09:00:00",
-    "checkpoints": 3,
-    "passedCheckpoints": 3,
-    "failedCheckpoints": 0,
-    "status": "approved",
-    "priority": "normal",
-    "notes": "Visual inspection for bearing part number and damage check completed.",
-    "grnDate": "2025-11-26",
-    "vendorInvoiceNo": "INV-RCNA-2025-034",
-    "vendorDate": "2025-11-25",
-    "serviceDate": null
-  },
-  {
-    "id": "INS-2026-0353",
-    "jobId": "JOB-RCNA-035",
-    "batchNo": "26-01-003",
-    "productName": "90 DEGREE LOCK & NUT",
-    "maker": "Radhakrishnan.S",
-    "makerDept": "QC Department",
-    "submittedAt": "2026-01-13T09:30:00",
-    "checkpoints": 10,
-    "passedCheckpoints": 10,
-    "failedCheckpoints": 0,
-    "status": "approved",
-    "priority": "high",
-    "notes": "Precision dimensional inspection completed. All measurements within specified tolerances.",
-    "grnDate": "2026-01-13",
-    "vendorInvoiceNo": "INV-RCNA-2026-035",
-    "vendorDate": "2026-01-12",
-    "serviceDate": null
-  },
-  {
-    "id": "INS-2026-0354",
-    "jobId": "JOB-RCNA-104",
-    "batchNo": "25-11-001",
-    "productName": "EC REP STICKER",
-    "maker": "Radhakrishnan.S",
-    "makerDept": "QC Department",
-    "submittedAt": "2025-11-13T09:00:00",
-    "checkpoints": 3,
-    "passedCheckpoints": 3,
-    "failedCheckpoints": 0,
-    "status": "approved",
-    "priority": "normal",
-    "notes": "Artwork verification and visual inspection completed.",
-    "grnDate": "2025-11-13",
-    "vendorInvoiceNo": "INV-RCNA-2025-104",
-    "vendorDate": "2025-11-12",
-    "serviceDate": null
-  },
-  {
-    "id": "VAL-007",
-    "jobId": "JOB-RSFA-061",
-    "batchNo": "26-01-001",
-    "productName": "3M.M HD WASHER",
-    "maker": "Radhakrishnan.S",
-    "makerDept": "QC Department",
-    "submittedAt": "2026-01-09T10:30:00",
-    "checkpoints": 5,
-    "passedCheckpoints": 5,
-    "failedCheckpoints": 0,
-    "status": "approved",
-    "priority": "normal",
-    "notes": "Washer dimensional inspection - inner/outer diameter and thickness verified.",
-    "grnDate": "2026-01-09",
-    "vendorInvoiceNo": "INV-RSFA-2026-061",
-    "vendorDate": "2026-01-08",
-    "serviceDate": null
-  },
-  {
-    "id": "VAL-008",
-    "jobId": "JOB-EEWA-029",
-    "batchNo": "26-01-002",
-    "productName": "2 CORE WIRE COIL-23/60 T.F.R",
-    "maker": "Radhakrishnan.S",
-    "makerDept": "QC Department",
-    "submittedAt": "2026-01-19T09:00:00",
-    "checkpoints": 3,
-    "passedCheckpoints": 3,
-    "failedCheckpoints": 0,
-    "status": "approved",
-    "priority": "normal",
-    "notes": "Electrical wire coil specification and damage check completed.",
-    "grnDate": "2026-01-19",
-    "vendorInvoiceNo": "INV-EEWA-2026-029",
-    "vendorDate": "2026-01-18",
-    "serviceDate": null
-  },
-  {
-    "id": "INS-2026-0228",
-    "jobId": "JOB-EETD-034",
-    "batchNo": "26-01-003",
-    "productName": "29V/3A TRANSFORMER",
-    "maker": "Radhakrishnan.S",
-    "makerDept": "QC Department",
-    "submittedAt": "2026-01-13T11:00:00",
-    "checkpoints": 6,
-    "passedCheckpoints": 6,
-    "failedCheckpoints": 0,
-    "status": "approved",
-    "priority": "high",
-    "notes": "Electrical output voltage testing completed. All voltage outputs within tolerance.",
-    "grnDate": "2026-01-13",
-    "vendorInvoiceNo": "INV-EETD-2026-034",
-    "vendorDate": "2026-01-12",
-    "serviceDate": null
-  },
-  {
-    "id": "INS-2026-0276",
-    "jobId": "JOB-RUBA-001",
-    "batchNo": "26-01-001",
-    "productName": "M.S BASE PLATE",
-    "maker": "Radhakrishnan.S",
-    "makerDept": "QC Department",
-    "submittedAt": "2026-01-14T10:00:00",
-    "checkpoints": 10,
-    "passedCheckpoints": 10,
-    "failedCheckpoints": 0,
-    "status": "approved",
-    "priority": "high",
-    "notes": "Metal base plate dimensional inspection. All measurements verified.",
-    "grnDate": "2026-01-14",
-    "vendorInvoiceNo": "INV-RUBA-2026-001",
-    "vendorDate": "2026-01-13",
-    "serviceDate": null
-  },
-  {
-    id: 'JOB-003',
-    batchNo: 'BATCH-2026-003',
-    productName: 'Display Panel Module',
-    poNumber: 'PO-2026-0135',
-    vendor: 'TechDisplay Corp',
-    quantity: 200,
-    samplingQty: 32,
-    priority: 'low',
-    status: 'pending',
-    dueDate: '2026-02-05',
-    checkpoints: 15,
-    grnDate: '2026-02-01',
-    vendorInvoiceNo: 'INV-TD-2026-0135',
-    vendorDate: '2026-01-30',
-    serviceDate: null,
-  },
-];
 
 const MakerDashboard = () => {
   const { user } = useAuth();
-  const [jobs, setJobs] = useState(
-    [...mockPendingJobs].sort((a, b) => new Date(a.submittedAt || a.dueDate) - new Date(b.submittedAt || b.dueDate))
-  );
+  const navigate = useNavigate();
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  const [jobs, setJobs] = useState([]);
+  const [summary, setSummary] = useState({
+    total_pending: 0,
+    total_in_progress: 0,
+    total_on_hold: 0,
+    total_completed: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all');
 
+  const fetchQueue = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await getInspectionQueue();
+
+      // API returns: { success, data: [...], summary: {...}, meta: {...} }
+      const queueItems = response.data || response || [];
+      const queueSummary = response.summary || {};
+
+      // Map backend fields → what our JobCard component expects
+      const mapped = queueItems.map((item) => ({
+    
+        id:               item.id,
+        queueNumber:      item.queue_number,
+        batchNo:          item.queue_number || `Q-${item.id}`,
+        productName:      item.component?.part_name || 'Unknown Component',
+        partCode:         item.component?.part_code || '',
+        poNumber:         item.grn?.grn_number || '',
+        vendor:           item.vendor?.vendor_name || '',
+        quantity:          item.lot_size,
+        samplingQty:      item.sample_size,
+        priority:         item.priority <= 2 ? 'high' : item.priority <= 4 ? 'normal' : 'low',
+        status:           item.status,
+        dueDate:          item.grn?.grn_date,
+        checkpoints:      0, // Will be known after loading the form
+        grnDate:          item.grn?.grn_date,
+        vendorInvoiceNo:  item.vendor?.vendor_code || '',
+        vendorDate:       item.grn?.grn_date,
+        serviceDate:      null,
+        assignedTo:       item.assigned_to,
+        daysInQuarantine: item.days_in_quarantine,
+        isOverdue:        item.is_overdue,
+        createdAt:        item.created_at,
+      }));
+
+      setJobs(mapped);
+      setSummary(queueSummary);
+    } catch (err) {
+      console.error('[MakerDashboard] Failed to fetch queue:', err);
+      setError(err.message || 'Failed to load inspection queue.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchQueue();
+  }, [fetchQueue]);
+
+  // ── Stats from real API summary ───────────────────────────────────────────
   const stats = [
-    { label: 'Pending Jobs', value: '8', change: '+3 today', icon: ClipboardList, color: colors.primary },
-    { label: 'In Progress', value: '2', change: 'Active now', icon: Clock, color: colors.warning },
-    { label: 'Completed Today', value: '12', change: '+15% vs avg', icon: CheckCircle2, color: colors.success },
-    { label: 'Pass Rate', value: '96.5%', change: '+1.2%', icon: TrendingUp, color: colors.accent },
+    { label: 'Pending Jobs',    value: String(summary.total_pending || 0),     change: 'Awaiting start',  icon: ClipboardList, color: colors.primary },
+    { label: 'In Progress',     value: String(summary.total_in_progress || 0), change: 'Active now',      icon: Clock,         color: colors.warning },
+    { label: 'On Hold',         value: String(summary.total_on_hold || 0),     change: 'Needs attention', icon: AlertTriangle, color: colors.danger || '#EF4444' },
+    { label: 'Completed',       value: String(summary.total_completed || 0),   change: 'Done',            icon: CheckCircle2,  color: colors.success },
   ];
 
+  // ── Filter ────────────────────────────────────────────────────────────────
   const filteredJobs = filter === 'all'
     ? jobs
     : jobs.filter(job => job.status === filter);
 
+  // ── Navigation ────────────────────────────────────────────────────────────
+  // ✅ FIX #6: Pass numeric id (e.g. 8) so the detail page calls
+  //    GET /api/v1/inspection/queue/8 (not /inspection/INS-2026-0354)
   const handleStartInspection = (jobId) => {
-
-    window.location.href = `/maker/inspection/${jobId}`;
+    navigate(`/maker/inspection/${jobId}`);
   };
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div style={styles.page}>
       <Header
@@ -256,9 +116,14 @@ const MakerDashboard = () => {
         subtitle={`Good ${getGreeting()}, ${user?.name || 'QC Inspector'}! Here's your inspection queue.`}
         showSearch
         actions={
-          <Button icon={PlayCircle} onClick={() => alert('Scan QR to start')}>
-            Quick Start
-          </Button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Button icon={RefreshCw} variant="outline" onClick={fetchQueue} disabled={loading}>
+              Refresh
+            </Button>
+            <Button icon={PlayCircle} onClick={() => alert('Scan QR to start')}>
+              Quick Start
+            </Button>
+          </div>
         }
       />
 
@@ -270,7 +135,7 @@ const MakerDashboard = () => {
           ))}
         </div>
 
-        {}
+        {/* Inspection Queue */}
         <section style={styles.section}>
           <div style={styles.sectionHeader}>
             <h2 style={styles.sectionTitle}>Inspection Queue</h2>
@@ -292,29 +157,55 @@ const MakerDashboard = () => {
             </div>
           </div>
 
-          {}
-          <div style={styles.jobsList}>
-            {filteredJobs.map((job) => (
-              <JobCard
-                key={job.id}
-                job={job}
-                onStart={() => handleStartInspection(job.id)}
-              />
-            ))}
+          {/* Loading state */}
+          {loading && (
+            <Card>
+              <div style={styles.emptyState}>
+                <Loader size={40} color={colors.primary} style={{ animation: 'spin 1s linear infinite' }} />
+                <h3 style={{ marginTop: 16 }}>Loading inspection queue...</h3>
+              </div>
+            </Card>
+          )}
 
-            {filteredJobs.length === 0 && (
-              <Card>
-                <div style={styles.emptyState}>
-                  <CheckCircle2 size={48} color={colors.success} />
-                  <h3>All Caught Up!</h3>
-                  <p>No pending inspections matching your filter.</p>
-                </div>
-              </Card>
-            )}
-          </div>
+          {/* Error state */}
+          {error && !loading && (
+            <Card>
+              <div style={styles.emptyState}>
+                <AlertTriangle size={48} color={colors.danger || '#EF4444'} />
+                <h3>Failed to Load Queue</h3>
+                <p style={{ color: colors.neutral[500] }}>{error}</p>
+                <Button icon={RefreshCw} onClick={fetchQueue} style={{ marginTop: 12 }}>
+                  Try Again
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          {/* Job list */}
+          {!loading && !error && (
+            <div style={styles.jobsList}>
+              {filteredJobs.map((job) => (
+                <JobCard
+                  key={job.id}
+                  job={job}
+                  onStart={() => handleStartInspection(job.id)}
+                />
+              ))}
+
+              {filteredJobs.length === 0 && (
+                <Card>
+                  <div style={styles.emptyState}>
+                    <CheckCircle2 size={48} color={colors.success} />
+                    <h3>All Caught Up!</h3>
+                    <p>No pending inspections matching your filter.</p>
+                  </div>
+                </Card>
+              )}
+            </div>
+          )}
         </section>
 
-        {}
+        {/* Quick Stats Row */}
         <div style={styles.quickStatsRow}>
           <Card>
             <div style={styles.quickStat}>
@@ -322,8 +213,8 @@ const MakerDashboard = () => {
                 <Timer size={20} color={colors.primary} />
               </div>
               <div>
-                <span style={styles.quickStatValue}>4.2 hrs</span>
-                <span style={styles.quickStatLabel}>Avg. Inspection Time</span>
+                <span style={styles.quickStatValue}>{jobs.length}</span>
+                <span style={styles.quickStatLabel}>Total Queue Items</span>
               </div>
             </div>
           </Card>
@@ -333,8 +224,8 @@ const MakerDashboard = () => {
                 <Package size={20} color={colors.success} />
               </div>
               <div>
-                <span style={styles.quickStatValue}>156</span>
-                <span style={styles.quickStatLabel}>Batches This Month</span>
+                <span style={styles.quickStatValue}>{summary.total_completed || 0}</span>
+                <span style={styles.quickStatLabel}>Completed Inspections</span>
               </div>
             </div>
           </Card>
@@ -344,8 +235,8 @@ const MakerDashboard = () => {
                 <AlertTriangle size={20} color={colors.warning} />
               </div>
               <div>
-                <span style={styles.quickStatValue}>3</span>
-                <span style={styles.quickStatLabel}>Issues Found Today</span>
+                <span style={styles.quickStatValue}>{jobs.filter(j => j.isOverdue).length}</span>
+                <span style={styles.quickStatLabel}>Overdue Items</span>
               </div>
             </div>
           </Card>
@@ -356,6 +247,9 @@ const MakerDashboard = () => {
 };
 
 
+// =============================================================================
+// JobCard Component
+// =============================================================================
 const JobCard = ({ job, onStart }) => {
   const isInProgress = job.status === 'in_progress';
   const progress = isInProgress && job.completedCheckpoints
@@ -369,22 +263,26 @@ const JobCard = ({ job, onStart }) => {
           <Badge type="priority" value={job.priority} size="sm" />
           <Badge type="status" value={job.status} size="sm" dot />
         </div>
-        <span style={styles.jobDueDate}>Due: {formatDate(job.dueDate)}</span>
+        <span style={styles.jobDueDate}>
+          {job.daysInQuarantine != null
+            ? `${job.daysInQuarantine} day${job.daysInQuarantine !== 1 ? 's' : ''} in quarantine`
+            : `Due: ${formatDate(job.dueDate)}`
+          }
+        </span>
       </div>
 
       <div style={styles.jobMain}>
         <div style={styles.jobInfo}>
           <h3 style={styles.jobTitle}>{job.productName}</h3>
           <div style={styles.jobMeta}>
+            {job.partCode && <span><strong>Part:</strong> {job.partCode}</span>}
             <span><strong>Batch:</strong> {job.batchNo}</span>
-            <span><strong>PO:</strong> {job.poNumber}</span>
-            <span><strong>Vendor:</strong> {job.vendor}</span>
+            {job.poNumber && <span><strong>GRN:</strong> {job.poNumber}</span>}
+            {job.vendor && <span><strong>Vendor:</strong> {job.vendor}</span>}
             {job.grnDate && <span><strong>GRN Date:</strong> {formatDate(job.grnDate)}</span>}
-            {job.vendorInvoiceNo && <span><strong>Vendor Invoice:</strong> {job.vendorInvoiceNo}</span>}
-            {job.vendorDate && <span><strong>Vendor Date:</strong> {formatDate(job.vendorDate)}</span>}
-            {job.serviceDate && <span><strong>Service Date:</strong> {formatDate(job.serviceDate)}</span>}
+            {job.assignedTo && <span><strong>Assigned:</strong> {job.assignedTo}</span>}
             {!job.grnDate && (
-              <span style={{ color: colors.danger, fontSize: '11px', fontWeight: 600 }}>
+              <span style={{ color: colors.danger || '#EF4444', fontSize: '11px', fontWeight: 600 }}>
                 ⚠ GRN Date missing
               </span>
             )}
@@ -393,21 +291,23 @@ const JobCard = ({ job, onStart }) => {
 
         <div style={styles.jobStats}>
           <div style={styles.jobStatItem}>
-            <span style={styles.jobStatValue}>{job.quantity}</span>
+            <span style={styles.jobStatValue}>{job.quantity || '-'}</span>
             <span style={styles.jobStatLabel}>Total Qty</span>
           </div>
           <div style={styles.jobStatItem}>
-            <span style={styles.jobStatValue}>{job.samplingQty}</span>
+            <span style={styles.jobStatValue}>{job.samplingQty || '-'}</span>
             <span style={styles.jobStatLabel}>Sample Size</span>
           </div>
-          <div style={styles.jobStatItem}>
-            <span style={styles.jobStatValue}>{job.checkpoints}</span>
-            <span style={styles.jobStatLabel}>Checkpoints</span>
-          </div>
+          {job.checkpoints > 0 && (
+            <div style={styles.jobStatItem}>
+              <span style={styles.jobStatValue}>{job.checkpoints}</span>
+              <span style={styles.jobStatLabel}>Checkpoints</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {isInProgress && (
+      {isInProgress && progress > 0 && (
         <div style={styles.progressSection}>
           <div style={styles.progressBar}>
             <div style={{ ...styles.progressFill, width: `${progress}%` }} />
@@ -431,6 +331,9 @@ const JobCard = ({ job, onStart }) => {
 };
 
 
+// =============================================================================
+// Helpers
+// =============================================================================
 const getGreeting = () => {
   const hour = new Date().getHours();
   if (hour < 12) return 'morning';
@@ -439,10 +342,16 @@ const getGreeting = () => {
 };
 
 const formatDate = (dateStr) => {
+  if (!dateStr) return 'Invalid Date';
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return 'Invalid Date';
   return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
 };
 
+
+// =============================================================================
+// Styles
+// =============================================================================
 const styles = {
   page: {
     minHeight: '100vh',
