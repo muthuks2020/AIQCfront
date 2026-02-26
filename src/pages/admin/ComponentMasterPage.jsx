@@ -22,22 +22,18 @@ import {
   duplicateComponent,
   exportComponents,
   importComponents,
+  getProductCategories,
 } from './component-master/api/componentMasterApi';
 import './component-master/styles/ComponentMasterPage.css';
 
 
-const CATEGORIES = [
-  { id: 'all', label: 'All Categories' },
-  { id: 'critical_assembly', label: 'Critical Assembly' },
-  { id: 'electrical', label: 'Electrical' },
-  { id: 'electronics', label: 'Electronics' },
-  { id: 'mechanical', label: 'Mechanical' },
-  { id: 'optical', label: 'Optical' },
-  { id: 'plastic', label: 'Plastic' },
-];
+// Categories are loaded dynamically from the API in the main component below.
+// Previously, these were hardcoded string IDs (e.g. 'critical_assembly', 'electrical')
+// that didn't match the actual DB codes (CAT-ELEC, CAT-MECH) or names (Electronic
+// Components, Mechanical Parts), causing all category filters to silently fail.
 
 
-const ComponentCard = ({ component, onClick }) => {
+const ComponentCard = ({ component, onClick, categories = [] }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'active': return 'cmp-status-active';
@@ -47,9 +43,20 @@ const ComponentCard = ({ component, onClick }) => {
     }
   };
 
-  const getCategoryLabel = (category) => {
-    const cat = CATEGORIES.find(c => c.id === category);
-    return cat ? cat.label : category;
+  const getCategoryLabel = () => {
+    // 1. Prefer categoryName already resolved by the API transformer
+    if (component.categoryName) return component.categoryName;
+    // 2. Try matching by category code against dynamic categories
+    if (component.productCategory) {
+      const match = categories.find(c => c.code === component.productCategory);
+      if (match) return match.name;
+    }
+    // 3. Try matching by numeric id
+    if (component.productCategoryId) {
+      const match = categories.find(c => c.id === component.productCategoryId);
+      if (match) return match.name;
+    }
+    return component.productCategory || 'Uncategorized';
   };
 
   const formatDate = (dateString) => {
@@ -67,7 +74,7 @@ const ComponentCard = ({ component, onClick }) => {
             {component.status || 'Active'}
           </span>
           <span className="cmp-badge cmp-badge-category">
-            {getCategoryLabel(component.productCategory)}
+            {getCategoryLabel()}
           </span>
         </div>
         <span className="cmp-card-code">{component.partCode}</span>
@@ -221,6 +228,32 @@ const ComponentMasterPage = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+
+  // Dynamic categories loaded from API (numeric IDs match the database)
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+  // Build filter tabs: "All Categories" + each API-loaded category
+  const categoryTabs = [
+    { id: 'all', label: 'All Categories' },
+    ...categories.map(cat => ({ id: cat.id, label: cat.name })),
+  ];
+
+  // Load categories from API on mount
+  useEffect(() => {
+    const loadCategories = async () => {
+      setCategoriesLoading(true);
+      try {
+        const cats = await getProductCategories();
+        setCategories(cats);
+      } catch (err) {
+        console.error('Error loading categories:', err);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+    loadCategories();
+  }, []);
 
 
   const loadComponents = useCallback(async () => {
@@ -424,7 +457,7 @@ const ComponentMasterPage = () => {
         </div>
 
         <div className="cmp-category-tabs">
-          {CATEGORIES.map((category) => (
+          {categoryTabs.map((category) => (
             <button
               key={category.id}
               className={`cmp-category-tab ${selectedCategory === category.id ? 'cmp-category-active' : ''}`}
@@ -433,6 +466,9 @@ const ComponentMasterPage = () => {
               {category.label}
             </button>
           ))}
+          {categoriesLoading && (
+            <Loader2 size={16} className="cmp-spin" style={{ color: '#8898aa', marginLeft: 4 }} />
+          )}
         </div>
       </div>
 
@@ -477,6 +513,7 @@ const ComponentMasterPage = () => {
                   key={component.id}
                   component={component}
                   onClick={handleCardClick}
+                  categories={categories}
                 />
               ))}
             </div>
