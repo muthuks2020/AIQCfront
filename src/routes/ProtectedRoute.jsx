@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, USER_ROLES } from '../contexts/AuthContext';
 import { colors } from '../constants/theme';
 
@@ -49,7 +49,13 @@ const LoadingScreen = () => (
 
 const UnauthorizedPage = ({ userRole }) => {
   const { getHomeRoute } = useAuth();
+  const navigate = useNavigate();
   const homeRoute = getHomeRoute();
+
+  // CHANGED: Use navigate() instead of <a href> so React Router's basename="/qc" is respected
+  const handleReturnHome = () => {
+    navigate(homeRoute);
+  };
 
   return (
     <div style={styles.unauthorizedContainer}>
@@ -66,9 +72,9 @@ const UnauthorizedPage = ({ userRole }) => {
           You don't have permission to access this page.
           Your role ({userRole}) doesn't allow access to this resource.
         </p>
-        <a href={homeRoute} style={styles.backButton}>
+        <button onClick={handleReturnHome} style={styles.backButton}>
           Return to Dashboard
-        </a>
+        </button>
       </div>
     </div>
   );
@@ -170,6 +176,8 @@ const styles = {
     color: 'white',
     background: colors.primary,
     borderRadius: '8px',
+    border: 'none',
+    cursor: 'pointer',
     textDecoration: 'none',
     transition: 'all 0.2s',
   },

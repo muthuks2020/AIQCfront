@@ -86,8 +86,8 @@ const AUTH_CONFIG = {
     tenantId: '', // Add your Azure AD tenant ID
     clientId: '', // Add your Azure AD client ID
     redirectUri: typeof window !== 'undefined' 
-      ? `${window.location.origin}/auth/callback` 
-      : 'http://localhost:3000/auth/callback',
+      ? `${window.location.origin}/qc/auth/callback` 
+      : 'http://localhost:3000/qc/auth/callback',
     scopes: ['openid', 'profile', 'email', 'User.Read'],
   },
 };

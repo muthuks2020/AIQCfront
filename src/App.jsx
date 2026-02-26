@@ -335,10 +335,11 @@ const NotFoundPage = () => {
 /**
  * Main App Component
  * Wraps everything with BrowserRouter and AuthProvider
+ * basename="/qc" ensures all routes are prefixed with /qc to match Vite's base config
  */
 const App = () => {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/qc">
       <AuthProvider>
         <AppRoutes />
       </AuthProvider>
