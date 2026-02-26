@@ -59,7 +59,7 @@ const AdminDashboard = () => {
           <h2 style={styles.sectionTitle}>Quick Actions</h2>
           <div style={styles.actionsGrid}>
             {quickActions.map((action, index) => (
-              <Card key={index} hover onClick={() => window.location.href = action.path}>
+              <Card key={index} hover onClick={() => navigate(action.path)}>
                 <div style={styles.actionCard}>
                   <div style={{ ...styles.actionIcon, background: `${action.color}10`, color: action.color }}>
                     <action.icon size={24} />
