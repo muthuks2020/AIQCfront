@@ -8,6 +8,11 @@ import {
   AlertCircle, Info, CheckCircle, Loader2, Microscope, Activity,
   BarChart3, RefreshCw, Zap, ArrowRight, MoreVertical, Bookmark
 } from "lucide-react";
+import {
+  getCheckerInspections,
+  approveInspection,
+  rejectInspection,
+} from "../../api/checkerService";
 
 
 const colors = {
@@ -43,42 +48,7 @@ const shadows = {
 const borderRadius = { sm: "4px", default: "8px", md: "12px", lg: "16px", xl: "24px", full: "9999px" };
 
 
-const API_BASE = "/api/v1/checker";
-
-const checkerApi = {
-  async getPendingReviews() {
-
-    return mockInspections.filter(i => i.status === "pending_review");
-  },
-  async getApprovedReviews() {
-
-    return mockInspections.filter(i => i.status === "approved");
-  },
-  async getRejectedReviews() {
-
-    return mockInspections.filter(i => i.status === "rejected");
-  },
-  async getReviewDetail(id) {
-
-    return mockInspections.find(i => i.id === id) || null;
-  },
-  async approveInspection(id, payload) {
-
-    return { success: true, message: "Inspection approved successfully" };
-  },
-  async rejectInspection(id, payload) {
-
-
-    return { success: true, message: "Inspection rejected and sent back to maker" };
-  },
-  async getDashboardStats() {
-
-    return {
-      pendingCount: 4, approvedToday: 14, rejectedWeek: 3,
-      avgReviewTime: "18 min", passRate: 87.5
-    };
-  },
-};
+// API_BASE and checkerApi removed — now using centralized checkerService.js
 
 
 const mockInspections = [
@@ -557,7 +527,8 @@ if (typeof document !== 'undefined' && !document.getElementById("ck-styles")) {
 export default function CheckerValidationCenter() {
   const [currentView, setCurrentView] = useState("dashboard");
   const [selectedInspection, setSelectedInspection] = useState(null);
-  const [inspections, setInspections] = useState(mockInspections);
+  const [inspections, setInspections] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("pending");
   const [showActionModal, setShowActionModal] = useState(null);
   const [actionRemarks, setActionRemarks] = useState("");
@@ -570,16 +541,47 @@ export default function CheckerValidationCenter() {
 
   const user = { name: "Priya Sharma", role: "checker", department: "Quality Assurance", employeeId: "EMP023" };
 
+  // ── Fetch inspections from API on mount ──
+  const fetchInspections = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await getCheckerInspections();
+      if (res.success) {
+        // Normalize API data to match what this component expects
+        const normalized = (res.data || []).map(item => ({
+          ...item,
+          // Ensure fields the UI uses are present
+          partName: item.partName || item.productName || '',
+          irNumber: item.irNumber || item.queueNumber || `Q-${item.id}`,
+          makerName: item.makerName || item.maker || '',
+          vendorName: item.vendorName || item.vendor || '',
+          stages: item.stages || item.results || [],
+        }));
+        setInspections(normalized);
+      }
+    } catch (err) {
+      console.error('[CheckerValidationCenter] Failed to load:', err);
+      // Fall back to mock data if API fails
+      setInspections(mockInspections);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchInspections();
+  }, [fetchInspections]);
+
 
   const filteredInspections = inspections.filter(i => {
     const matchesTab = activeTab === "pending" ? i.status === "pending_review" :
                        activeTab === "approved" ? i.status === "approved" :
                        activeTab === "rejected" ? i.status === "rejected" : true;
     const matchesSearch = searchQuery === "" ||
-      i.partName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      i.irNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      i.makerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      i.vendorName.toLowerCase().includes(searchQuery.toLowerCase());
+      (i.partName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (i.irNumber || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (i.makerName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (i.vendorName || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesTab && matchesSearch;
   });
 
@@ -610,10 +612,11 @@ export default function CheckerValidationCenter() {
     if (!actionRemarks.trim()) return;
     setProcessing(true);
     try {
-      await checkerApi.approveInspection(selectedInspection.id, {
+      await approveInspection(selectedInspection.id, {
         checkerRemarks: actionRemarks,
+        remarks: actionRemarks,
         checkerDate: new Date().toISOString(),
-        checkerId: "USR-CHECKER-001",
+        checkerId: user.employeeId,
         checkerName: user.name,
       });
       const updatedDate = new Date().toISOString();
@@ -640,12 +643,13 @@ export default function CheckerValidationCenter() {
     if (!actionRemarks.trim() || !rejectionCategory) return;
     setProcessing(true);
     try {
-      await checkerApi.rejectInspection(selectedInspection.id, {
+      await rejectInspection(selectedInspection.id, {
         checkerRemarks: actionRemarks,
+        remarks: actionRemarks,
         rejectionCategory: rejectionCategory,
         rejectionReason: rejectionReason,
         checkerDate: new Date().toISOString(),
-        checkerId: "USR-CHECKER-001",
+        checkerId: user.employeeId,
         checkerName: user.name,
         returnToMaker: true,
       });
