@@ -1,5 +1,4 @@
 
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 // User roles enum
@@ -85,6 +84,7 @@ const AUTH_CONFIG = {
     provider: 'microsoft',
     tenantId: '', // Add your Azure AD tenant ID
     clientId: '', // Add your Azure AD client ID
+    // CHANGED: Added /qc prefix to match base URL
     redirectUri: typeof window !== 'undefined' 
       ? `${window.location.origin}/qc/auth/callback` 
       : 'http://localhost:3000/qc/auth/callback',
