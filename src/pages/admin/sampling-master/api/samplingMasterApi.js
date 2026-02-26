@@ -170,7 +170,7 @@ const transformers = {
       samplePlanTypeName: getPlanTypeName(planType),
       aqlLevel:           apiData.aql_level || '',
       inspectionLevel:    apiData.inspection_level || '',
-      iterations:         apiData.iterations || 1,
+      iterations:         Number(apiData.iterations) || 1,
       status:             apiData.is_active !== false ? 'active' : 'inactive',
       createdAt:          apiData.created_at,
       updatedAt:          apiData.updated_at,
