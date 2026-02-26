@@ -48,6 +48,8 @@ import {
   getProductGroups,
   getSamplingPlans,
   getQCPlans,
+  getUnits,
+  getInstruments,
   createComponent,
   updateComponent,
   getComponentById,
@@ -108,12 +110,15 @@ const ComponentMasterEntryPage = () => {
   const [productGroups, setProductGroups] = useState([]);
   const [samplingPlans, setSamplingPlans] = useState([]);
   const [qcPlans, setQCPlans] = useState([]);
+  const [apiUnits, setApiUnits] = useState([]);
+  const [apiInstruments, setApiInstruments] = useState([]);
 
 
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [loadingSamplingPlans, setLoadingSamplingPlans] = useState(true);
   const [loadingQCPlans, setLoadingQCPlans] = useState(true);
+  const [masterDataLoaded, setMasterDataLoaded] = useState(false);
 
 
   useEffect(() => {
@@ -136,8 +141,24 @@ const ComponentMasterEntryPage = () => {
         const qcData = await getQCPlans();
         setQCPlans(qcData);
         setLoadingQCPlans(false);
+
+        // Load units and instruments from API for dropdown options
+        try {
+          const unitsData = await getUnits();
+          setApiUnits(unitsData);
+        } catch (e) {
+          console.warn('Units lookup failed, using fallback options:', e);
+        }
+        try {
+          const instrumentsData = await getInstruments();
+          setApiInstruments(instrumentsData);
+        } catch (e) {
+          console.warn('Instruments lookup failed, using fallback options:', e);
+        }
+        setMasterDataLoaded(true);
       } catch (error) {
         console.error('Error loading master data:', error);
+        setMasterDataLoaded(true); // still mark as loaded so edit mode can proceed
       }
     };
 
@@ -146,13 +167,14 @@ const ComponentMasterEntryPage = () => {
 
 
   // =========================================================================
-  // Load existing component when editing
+  // Load existing component when editing — waits for master data (units,
+  // instruments) so that dropdown values can be matched correctly
   // =========================================================================
   useEffect(() => {
-    if (isEditing && id) {
+    if (isEditing && id && masterDataLoaded) {
       loadComponent();
     }
-  }, [id]);
+  }, [id, masterDataLoaded]);
 
   const loadComponent = async () => {
     setIsLoading(true);
@@ -470,38 +492,27 @@ const ComponentMasterEntryPage = () => {
   };
 
 
-  const unitOptions = [
-    { value: '', label: '—' },
-    { value: 'mm', label: 'mm' },
-    { value: 'cm', label: 'cm' },
-    { value: 'CM', label: 'CM' },
-    { value: 'inch', label: 'inch' },
-    { value: 'kg', label: 'kg' },
-    { value: 'g', label: 'g' },
-    { value: 'nos', label: 'Nos' },
-    { value: 'pcs', label: 'Pcs' },
-    { value: 'units', label: 'Units' },
-    { value: 'ply', label: 'Ply' },
-    { value: '%', label: '%' },
-    { value: 'V', label: 'V' },
-    { value: 'A', label: 'A' },
-    { value: 'Ω', label: 'Ω' },
-    { value: 'MHz', label: 'MHz' },
-    { value: 'PIN', label: 'PIN' },
-    { value: 'CORE', label: 'CORE' },
-    { value: 'ZZ', label: 'ZZ' },
-  ];
+  // Build unit options from API data (values = unit_code like "MM", "CM")
+  // This ensures the dropdown value matches what checkingParamFromApi returns
+  // NO hardcoded fallback — prevents users from selecting values that won't
+  // match the API on edit (e.g. "mm" vs "MM" case mismatch)
+  const unitOptions = apiUnits.length > 0
+    ? [
+        { value: '', label: '—' },
+        ...apiUnits.map(u => ({ value: u.code, label: u.name || u.code })),
+      ]
+    : [{ value: '', label: 'Loading units...' }];
 
-  const instrumentOptions = [
-    { value: '', label: 'Select Instrument' },
-    { value: 'Visual', label: 'Visual' },
-    { value: 'Scale', label: 'Scale' },
-    { value: 'Vernier', label: 'Vernier Caliper' },
-    { value: 'Micrometer', label: 'Micrometer' },
-    { value: 'Multimeter', label: 'Multimeter' },
-    { value: 'Oscilloscope', label: 'Oscilloscope' },
-    { value: 'Gauge', label: 'Gauge' },
-  ];
+  // Build instrument options from API data (values = instrument_name)
+  // NO hardcoded fallback — the old hardcoded names ("Micrometer", "Vernier")
+  // didn't match actual DB names ("Outside Micrometer 25mm", "Vernier Caliper 150mm")
+  // causing instrument_id to save as null and appear blank on edit
+  const instrumentOptions = apiInstruments.length > 0
+    ? [
+        { value: '', label: 'Select Instrument' },
+        ...apiInstruments.map(i => ({ value: i.name, label: i.name })),
+      ]
+    : [{ value: '', label: 'Loading instruments...' }];
 
 
   const toggleCheckingType = (type) => {
