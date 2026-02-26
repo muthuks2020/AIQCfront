@@ -270,6 +270,7 @@ const transformers = {
     productName:     apiData.category?.category_name || apiData.category_name || '',
     departmentId:    apiData.department_id || '',
     departmentName:  apiData.department?.department_name || apiData.department_name || '',
+    description:     apiData.description || '',
 
     stages: (apiData.stages || []).map((s, sIdx) => ({
       id:               s.id,
@@ -308,6 +309,9 @@ const transformers = {
     company:          formData.company || null,
     location:         formData.location || null,
     department_id:    Number(formData.departmentId) || null,
+    // ── FIX: send category_id (product) and description to backend ──
+    category_id:      Number(formData.productId) || null,
+    description:      formData.description || null,
     revision:         formData.documentRevNo || '',
     revision_date:    formData.revisionDate || null,
     effective_date:   formData.effectiveDate || null,
