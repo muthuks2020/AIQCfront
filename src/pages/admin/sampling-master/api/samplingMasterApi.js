@@ -315,30 +315,7 @@ const transformers = {
     document_number:  formData.documentNumber || '',
     requires_visual:  formData.requiresVisual ?? true,
     requires_functional: formData.requiresFunctional ?? false,
-    stages: (formData.stages || []).map((stage, sIdx) => ({
-      stage_name:        stage.stageName,
-      stage_code:        stage.stageCode || `STG-${String(sIdx + 1).padStart(2, '0')}`,
-      stage_type:        stage.stageType || 'visual',
-      stage_sequence:    stage.stageSequence || sIdx + 1,
-      inspection_type:   stage.inspectionType || 'sampling',
-      sampling_plan_id:  stage.samplingPlanId ? Number(stage.samplingPlanId) : null,
-      is_mandatory:      stage.isMandatory ?? true,
-      requires_instrument: stage.requiresInstrument ?? false,
-      parameters: (stage.parameters || []).map((p, pIdx) => ({
-        parameter_name:     p.parameterName,
-        parameter_sequence: p.parameterSequence || pIdx + 1,
-        checking_type:      p.checkingType || 'visual',
-        specification:      p.specification || null,
-        nominal_value:      p.nominalValue ? String(p.nominalValue) : null,
-        tolerance_min:      p.toleranceMin ? String(p.toleranceMin) : null,
-        tolerance_max:      p.toleranceMax ? String(p.toleranceMax) : null,
-        unit_id:            p.unitId ? Number(p.unitId) : null,
-        instrument_id:      p.instrumentId ? Number(p.instrumentId) : null,
-        input_type:         p.inputType || 'pass_fail',
-        is_mandatory:       p.isMandatory ?? true,
-        acceptance_criteria: p.acceptanceCriteria || null,
-      })),
-    })),
+    stages: [],   // Stages removed — no longer sent from Quality Plan form
   }),
 
 
