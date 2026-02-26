@@ -1276,13 +1276,15 @@ const ComponentMasterEntryPage = () => {
       {}
       {showSuccess && (
         <SuccessModal
+          show={true}
           title={isEditing ? 'Component Updated!' : 'Component Created!'}
           message={`${formData.partCode} - ${formData.partName} has been successfully ${isEditing ? 'updated' : 'registered'}.`}
           onClose={() => {
             setShowSuccess(false);
             navigate('/admin/component-master');
           }}
-          onCreateAnother={isEditing ? undefined : handleCreateAnother}
+          onAction={isEditing ? undefined : handleCreateAnother}
+          actionLabel="Create Another"
         />
       )}
       </>
