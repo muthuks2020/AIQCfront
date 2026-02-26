@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Users,
   Boxes,
@@ -16,6 +17,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const stats = [
     { label: 'Total Users', value: '24', change: '+3 this month', icon: Users, color: colors.roles.admin.primary },
