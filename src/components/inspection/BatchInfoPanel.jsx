@@ -36,7 +36,7 @@ const BatchInfoPanel = ({ batchInfo, onScan }) => {
 
   return (
     <div style={styles.container}>
-      {}
+      {/* Header */}
       <div style={styles.header}>
         <h2 style={styles.title}>Batch Information</h2>
         {onScan && (
@@ -47,16 +47,12 @@ const BatchInfoPanel = ({ batchInfo, onScan }) => {
         )}
       </div>
 
-      {}
+      {/* IR & PO Information */}
       <div style={styles.section}>
-        <InfoItem
-          label="PO Number"
-          value={batchInfo.poNumber}
-          icon={FileText}
-        />
         <InfoItem
           label="IR Number"
           value={batchInfo.irNumber}
+          icon={FileText}
         />
         <InfoItem
           label="IR Date"
@@ -67,7 +63,23 @@ const BatchInfoPanel = ({ batchInfo, onScan }) => {
 
       <SectionDivider />
 
-      {}
+      {/* PO Information */}
+      <div style={styles.section}>
+        <InfoItem
+          label="PO Number"
+          value={batchInfo.poNumber}
+          icon={FileText}
+        />
+        <InfoItem
+          label="PO Date"
+          value={formatDateIndian(batchInfo.poDate)}
+          icon={Calendar}
+        />
+      </div>
+
+      <SectionDivider />
+
+      {/* GRN Information */}
       <div style={styles.section}>
         <InfoItem
           label="GRN Number"
@@ -81,7 +93,7 @@ const BatchInfoPanel = ({ batchInfo, onScan }) => {
 
       <SectionDivider />
 
-      {}
+      {/* Component Information */}
       <div style={styles.section}>
         <InfoItem
           label="Part Code"
@@ -96,7 +108,7 @@ const BatchInfoPanel = ({ batchInfo, onScan }) => {
 
       <SectionDivider />
 
-      {}
+      {/* Vendor Information */}
       <div style={styles.section}>
         <InfoItem
           label="Supplier"
@@ -115,7 +127,7 @@ const BatchInfoPanel = ({ batchInfo, onScan }) => {
 
       <SectionDivider />
 
-      {}
+      {/* Quantity Information */}
       <div style={styles.section}>
         <InfoItem
           label="Lot Size"
@@ -130,7 +142,7 @@ const BatchInfoPanel = ({ batchInfo, onScan }) => {
 
       <SectionDivider />
 
-      {}
+      {/* Plan Information */}
       <div style={styles.section}>
         <InfoItem
           label="Quality Plan No"
@@ -149,7 +161,7 @@ const BatchInfoPanel = ({ batchInfo, onScan }) => {
         )}
       </div>
 
-      {}
+      {/* Document Reference */}
       {batchInfo.documentRef && (
         <div style={styles.footer}>
           <span style={styles.docRef}>{batchInfo.documentRef}</span>
@@ -202,27 +214,27 @@ const styles = {
   },
   infoItem: {
     display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   infoLabel: {
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
-    fontSize: '12px',
+    fontSize: '13px',
     fontWeight: '500',
-    color: colors.text.tertiary,
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
+    color: colors.text.secondary,
   },
   labelIcon: {
-    color: colors.text.tertiary,
+    opacity: 0.6,
   },
   infoValue: {
-    fontSize: '14px',
-    fontWeight: '500',
+    fontSize: '13px',
+    fontWeight: '600',
     color: colors.text.primary,
-    lineHeight: '1.4',
+    textAlign: 'right',
+    maxWidth: '60%',
+    wordBreak: 'break-word',
   },
   divider: {
     height: '1px',
@@ -230,20 +242,22 @@ const styles = {
     margin: '16px 0',
   },
   footer: {
-    marginTop: '20px',
-    paddingTop: '16px',
+    marginTop: '16px',
+    paddingTop: '12px',
     borderTop: `1px dashed ${colors.border.light}`,
     textAlign: 'center',
   },
   docRef: {
     fontSize: '11px',
-    color: colors.text.tertiary,
-    fontStyle: 'italic',
+    fontWeight: '500',
+    color: colors.text.muted,
+    letterSpacing: '0.5px',
   },
   skeleton: {
     padding: '40px',
     textAlign: 'center',
-    color: colors.text.tertiary,
+    color: colors.text.muted,
+    fontSize: '14px',
   },
 };
 

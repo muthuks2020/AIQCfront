@@ -50,8 +50,8 @@ const transformFormResponse = (apiData, localForm) => {
   return {
     // Batch info fields (flat, matches mockBatchDetails shape)
     id:              q.id,
-    irNumber:        null,                              // not yet generated
-    irDate:          null,
+    irNumber:        q.ir_number || null,               // generated on Start Inspection
+    irDate:          q.ir_date || null,                  // set on Start Inspection
     poNumber:        grn.po_number || null,
     poDate:          grn.po_date || null,
     grnNumber:       grn.grn_number || null,
@@ -157,12 +157,23 @@ export const startInspection = async (inspectionId) => {
       inspectionId,
       status: 'in_progress',
       startedAt: new Date().toISOString(),
+      // Mock IR number generation (YYMMNNNNN format)
+      irNumber: `${new Date().getFullYear().toString().slice(-2)}${String(new Date().getMonth() + 1).padStart(2, '0')}00001`,
+      irDate: new Date().toISOString().split('T')[0],
     };
   }
 
-  return apiFetch(ENDPOINTS.inspection.start(inspectionId), {
+  const response = await apiFetch(ENDPOINTS.inspection.start(inspectionId), {
     method: 'POST',
   });
+
+  // Backend now returns { data: { ir_number, ir_date, started_at } }
+  const responseData = response.data || response;
+  return {
+    ...response,
+    irNumber: responseData.ir_number || null,
+    irDate: responseData.ir_date || null,
+  };
 };
 
 
