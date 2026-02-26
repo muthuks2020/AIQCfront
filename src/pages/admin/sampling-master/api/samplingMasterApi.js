@@ -307,7 +307,6 @@ const transformers = {
     plan_type:        formData.planType || 'standard',
     company:          formData.company || null,
     location:         formData.location || null,
-    category_id:      Number(formData.productId) || null,
     department_id:    Number(formData.departmentId) || null,
     revision:         formData.documentRevNo || '',
     revision_date:    formData.revisionDate || null,
