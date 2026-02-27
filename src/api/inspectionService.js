@@ -58,6 +58,8 @@ const transformFormResponse = (apiData, localForm) => {
     grnDate:         grn.grn_date || null,
     vendorDcNo:      grn.dc_number || null,
     vendorDcDate:    grn.dc_date || null,
+    vendorInvoiceNo:   grn.vendor_bill_no || null,
+    vendorInvoiceDate: grn.vendor_bill_date || null,
     partCode:        comp.part_code || null,
     partName:        comp.part_name || null,
     vendor: {

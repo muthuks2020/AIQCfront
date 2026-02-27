@@ -111,7 +111,7 @@ const BatchInfoPanel = ({ batchInfo, onScan }) => {
       {/* Vendor Information */}
       <div style={styles.section}>
         <InfoItem
-          label="Supplier"
+          label="Vendor Name"
           value={typeof batchInfo.vendor === 'object'
             ? batchInfo.vendor.name
             : batchInfo.vendor}
@@ -123,6 +123,16 @@ const BatchInfoPanel = ({ batchInfo, onScan }) => {
             value={batchInfo.vendorDcNo}
           />
         )}
+        <InfoItem
+          label="Vendor Invoice Number"
+          value={batchInfo.vendorInvoiceNo}
+          icon={FileText}
+        />
+        <InfoItem
+          label="Vendor Invoice Date"
+          value={formatDateIndian(batchInfo.vendorInvoiceDate)}
+          icon={Calendar}
+        />
       </div>
 
       <SectionDivider />
