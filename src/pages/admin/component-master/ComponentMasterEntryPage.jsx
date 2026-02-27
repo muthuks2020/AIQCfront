@@ -101,7 +101,7 @@ const ComponentMasterEntryPage = () => {
   const [visualEnabled, setVisualEnabled] = useState(false);
   const [functionalEnabled, setFunctionalEnabled] = useState(false);
   const [visualParams, setVisualParams] = useState([
-    { id: 1, checkingPoint: '', unit: '', specification: '', instrumentName: '' }
+    { id: 1, checkingPoint: '', unit: '', specification: '', instrumentName: '', referenceFile: null, referenceFileName: null, referenceFileSize: null, referenceMimeType: null, referenceFileParamId: null }
   ]);
   const [functionalParams, setFunctionalParams] = useState([
     { id: 1, checkingPoint: '', unit: 'mm', specification: '', instrumentName: '', toleranceMin: '', toleranceMax: '' }
@@ -248,15 +248,12 @@ const ComponentMasterEntryPage = () => {
         })));
       }
 
-      // Populate documents — create File-like objects for FormFileUpload display
+      // Populate documents — only Specification Document file
       if (comp.documents && comp.documents.length > 0) {
         setExistingDocuments(comp.documents);
 
         const docTypeToField = {
-          'drawing': 'drawingAttachment',
-          'test_cert': 'testCertFile',
           'specification': 'specFile',
-          'fqir': 'fqirFile',
         };
 
         const fileUpdates = {};
@@ -465,7 +462,8 @@ const ComponentMasterEntryPage = () => {
       // Upload any NEW files (actual File objects, not existing server files)
       const componentId = isEditing ? id : (savedComp?.id || null);
       if (componentId) {
-        const fileFields = ['drawingAttachment', 'testCertFile', 'specFile', 'fqirFile'];
+        // Only upload specFile now
+        const fileFields = ['specFile'];
         for (const fieldName of fileFields) {
           const fileVal = formData[fieldName];
           if (fileVal && fileVal instanceof File) {
@@ -691,9 +689,9 @@ const ComponentMasterEntryPage = () => {
               </div>
             </div>
 
-            {}
+            {/* Form Body */}
             <div className="cm-form-body">
-              {}
+              {/* Step 1: Product Classification */}
               <FormSection
                 icon={Layers}
                 title="Product Classification"
@@ -736,7 +734,7 @@ const ComponentMasterEntryPage = () => {
                 </div>
               </FormSection>
 
-              {}
+              {/* Step 2: Part Identification */}
               <FormSection
                 icon={Package}
                 title="Part Identification"
@@ -799,7 +797,7 @@ const ComponentMasterEntryPage = () => {
                 </div>
               </FormSection>
 
-              {}
+              {/* Step 3: Inspection Configuration */}
               <FormSection
                 icon={Shield}
                 title="Inspection Configuration"
@@ -834,80 +832,58 @@ const ComponentMasterEntryPage = () => {
                 )}
               </FormSection>
 
-              {}
+              {/* ══════════════════════════════════════════════════════════
+                  Step 4: Documentation & Compliance — REDESIGNED
+                  Only Specification Document checkbox + single file upload
+                  ══════════════════════════════════════════════════════════ */}
               <FormSection
                 icon={FileText}
                 title="Documentation & Compliance"
                 badge="Step 4 of 5"
               >
-                <div className="cm-form-grid cm-form-grid-3">
-                  <FormCheckboxCard
-                    label="Test Certificate"
-                    name="testCertRequired"
-                    checked={formData.testCertRequired}
-                    onChange={handleChange}
-                    description="Vendor test certificate required"
-                    icon={Clipboard}
-                  />
-                  <FormCheckboxCard
-                    label="Specification Document"
-                    name="specRequired"
-                    checked={formData.specRequired}
-                    onChange={handleChange}
-                    description="Detailed specification required"
-                    icon={FileText}
-                  />
-                  <FormCheckboxCard
-                    label="FQIR Document"
-                    name="fqirRequired"
-                    checked={formData.fqirRequired}
-                    onChange={handleChange}
-                    description="First Quality Inspection Report"
-                    icon={Shield}
-                  />
-                </div>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'stretch',
+                  gap: '16px',
+                  flexWrap: 'wrap',
+                }}>
+                  {/* Specification Document Toggle */}
+                  <div style={{ flex: '0 0 280px', minWidth: '240px' }}>
+                    <FormCheckboxCard
+                      label="Specification Document"
+                      name="specRequired"
+                      checked={formData.specRequired}
+                      onChange={handleChange}
+                      description="Detailed specification required"
+                      icon={FileText}
+                    />
+                  </div>
 
-                <div className="cm-form-grid cm-form-grid-3" style={{ marginTop: '20px' }}>
-                  <FormFileUpload
-                    label="Drawing Attachment"
-                    name="drawingAttachment"
-                    value={formData.drawingAttachment}
-                    onChange={handleFileChange}
-                    accept=".pdf,.png,.jpg,.jpeg,.dwg"
-                    maxSize={10}
-                    error={errors.drawingAttachment}
-                    description="Engineering drawing file"
-                  />
-                  <FormFileUpload
-                    label="Test Certificate File"
-                    name="testCertFile"
-                    value={formData.testCertFile}
-                    onChange={handleFileChange}
-                    accept=".pdf,.png,.jpg,.jpeg"
-                    maxSize={5}
-                    error={errors.testCertFile}
-                    description="Upload vendor test certificate"
-                  />
-                  <FormFileUpload
-                    label="FQIR File"
-                    name="fqirFile"
-                    value={formData.fqirFile}
-                    onChange={handleFileChange}
-                    accept=".pdf,.png,.jpg,.jpeg"
-                    maxSize={5}
-                    error={errors.fqirFile}
-                    description="First article quality inspection report"
-                  />
+                  {/* Specification Document Upload — shown only when toggled on */}
+                  {formData.specRequired && (
+                    <div style={{ flex: '1 1 300px', minWidth: '260px' }}>
+                      <FormFileUpload
+                        label="Upload Specification Document"
+                        name="specFile"
+                        value={formData.specFile}
+                        onChange={handleFileChange}
+                        accept=".pdf,.png,.jpg,.jpeg,.xlsx,.docx"
+                        maxSize={10}
+                        error={errors.specFile}
+                        description="PDF, PNG, JPG, XLSX or DOCX (max 10MB)"
+                      />
+                    </div>
+                  )}
                 </div>
               </FormSection>
 
-              {}
+              {/* Step 5: Detailed Checking Parameters */}
               <FormSection
                 icon={Ruler}
                 title="Detailed Checking Parameters"
                 badge="Step 5 of 5"
               >
-                {}
+                {/* Checking Type Selector */}
                 <div className="cm-checking-type-selector">
                   <label className="cm-label" style={{ marginBottom: '8px', display: 'block' }}>
                     Checking Type
@@ -923,7 +899,7 @@ const ComponentMasterEntryPage = () => {
                   </p>
 
                   <div className="cm-checking-type-cards">
-                    {}
+                    {/* Visual */}
                     <div
                       className={`cm-checking-type-card ${visualEnabled ? 'cm-checking-type-active' : ''}`}
                       onClick={() => toggleCheckingType('visual')}
@@ -945,7 +921,7 @@ const ComponentMasterEntryPage = () => {
                       )}
                     </div>
 
-                    {}
+                    {/* Functional */}
                     <div
                       className={`cm-checking-type-card ${functionalEnabled ? 'cm-checking-type-active' : ''}`}
                       onClick={() => toggleCheckingType('functional')}
@@ -968,7 +944,7 @@ const ComponentMasterEntryPage = () => {
                     </div>
                   </div>
 
-                  {}
+                  {/* Combined banner */}
                   {visualEnabled && functionalEnabled && (
                     <div className="cm-combined-type-banner">
                       <div className="cm-combined-type-icon">
@@ -980,7 +956,7 @@ const ComponentMasterEntryPage = () => {
                     </div>
                   )}
 
-                  {}
+                  {/* No type hint */}
                   {!visualEnabled && !functionalEnabled && (
                     <div className="cm-no-type-hint">
                       <AlertCircle size={14} />
@@ -989,7 +965,7 @@ const ComponentMasterEntryPage = () => {
                   )}
                 </div>
 
-                {}
+                {/* Visual Checking Parameters */}
                 {visualEnabled && (
                   <div className="cm-param-section" style={{ marginTop: '24px' }}>
                     <div className="cm-param-header">
@@ -1157,7 +1133,7 @@ const ComponentMasterEntryPage = () => {
                   </div>
                 )}
 
-                {}
+                {/* Functional Checking Parameters */}
                 {functionalEnabled && (
                   <div className="cm-param-section" style={{ marginTop: '24px' }}>
                     <div className="cm-param-header">
@@ -1204,7 +1180,7 @@ const ComponentMasterEntryPage = () => {
                               <input
                                 type="text"
                                 className="cm-input cm-input-sm"
-                                placeholder="e.g., Length, Diameter"
+                                placeholder="e.g., Overall Length"
                                 value={param.checkingPoint}
                                 onChange={(e) => updateFunctionalParam(param.id, 'checkingPoint', e.target.value)}
                               />
@@ -1224,7 +1200,7 @@ const ComponentMasterEntryPage = () => {
                               <input
                                 type="text"
                                 className="cm-input cm-input-sm"
-                                placeholder="e.g., 250mm +/-0.5"
+                                placeholder="Spec"
                                 value={param.specification}
                                 onChange={(e) => updateFunctionalParam(param.id, 'specification', e.target.value)}
                               />
@@ -1276,7 +1252,7 @@ const ComponentMasterEntryPage = () => {
                   </div>
                 )}
 
-                {}
+                {/* Parameter Summary */}
                 {(visualEnabled || functionalEnabled) && totalParamCount > 0 && (
                   <div className="cm-param-summary" style={{ marginTop: '24px' }}>
                     <div
@@ -1310,7 +1286,7 @@ const ComponentMasterEntryPage = () => {
 
                     {showParamSummary && (
                       <div className="cm-param-summary-body">
-                        {}
+                        {/* Visual Summary */}
                         {visualEnabled && filledVisualCount > 0 && (
                           <div className="cm-param-summary-section">
                             <div className="cm-param-summary-section-header">
@@ -1344,7 +1320,7 @@ const ComponentMasterEntryPage = () => {
                           </div>
                         )}
 
-                        {}
+                        {/* Functional Summary */}
                         {functionalEnabled && filledFunctionalCount > 0 && (
                           <div className="cm-param-summary-section">
                             <div className="cm-param-summary-section-header">
@@ -1386,7 +1362,7 @@ const ComponentMasterEntryPage = () => {
               </FormSection>
             </div>
 
-            {}
+            {/* Form Footer */}
             <div className="cm-form-footer">
               <div className="cm-form-footer-left">
                 <FormButton
@@ -1420,7 +1396,7 @@ const ComponentMasterEntryPage = () => {
         </form>
       </div>
 
-      {}
+      {/* Success Modal */}
       {showSuccess && (
         <SuccessModal
           show={true}
