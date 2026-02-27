@@ -1384,3 +1384,157 @@
     height: 48px;
   }
 }
+/**
+ * ══════════════════════════════════════════════════════════════
+ *  CSS ADDITIONS — Visual Param Reference File Upload
+ *  File to update: src/pages/admin/component-master/styles/ComponentMasterEntry.css
+ *  
+ *  Add ALL of the below at the end of the file.
+ * ══════════════════════════════════════════════════════════════
+ */
+
+
+/* ── New column width for Reference File ── */
+.cm-param-col-file {
+  flex: 1.4;
+  min-width: 170px;
+}
+
+
+/* ── Upload Button (when no file is attached) ── */
+.cm-param-file-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--cm-primary);
+  background: var(--cm-primary-light, #EEF2FF);
+  border: 1.5px dashed var(--cm-primary);
+  border-radius: var(--cm-radius-sm);
+  cursor: pointer;
+  transition: var(--cm-transition);
+  white-space: nowrap;
+}
+
+.cm-param-file-upload-btn:hover {
+  background: var(--cm-primary);
+  color: white;
+  border-style: solid;
+}
+
+
+/* ── Attached File Display ── */
+.cm-param-file-attached {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 8px;
+  background: var(--cm-success-light, #F0FDF4);
+  border: 1px solid var(--cm-success, #22C55E);
+  border-radius: var(--cm-radius-sm);
+  min-height: 34px;
+}
+
+.cm-param-file-info {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.cm-param-file-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--cm-gray-700);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+/* ── File Action Buttons (view / re-upload / delete) ── */
+.cm-param-file-actions {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.cm-param-file-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--cm-transition);
+  padding: 0;
+  background: transparent;
+}
+
+.cm-param-file-btn-view {
+  color: var(--cm-primary);
+}
+.cm-param-file-btn-view:hover {
+  background: var(--cm-primary-light, #EEF2FF);
+}
+
+.cm-param-file-btn-reupload {
+  color: var(--cm-accent, #F59E0B);
+  cursor: pointer;
+}
+.cm-param-file-btn-reupload:hover {
+  background: #FEF3C7;
+}
+
+.cm-param-file-btn-delete {
+  color: var(--cm-danger);
+}
+.cm-param-file-btn-delete:hover {
+  background: var(--cm-danger-light, #FEF2F2);
+}
+
+
+/* ── Missing file indicator (in summary) ── */
+.cm-param-file-missing {
+  color: var(--cm-danger);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.cm-param-file-present {
+  color: var(--cm-success);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+
+/* ── Responsive adjustments ── */
+@media (max-width: 1200px) {
+  .cm-param-col-file {
+    min-width: 140px;
+    flex: 1.2;
+  }
+}
+
+@media (max-width: 768px) {
+  .cm-param-col-file {
+    min-width: 120px;
+  }
+
+  .cm-param-file-attached {
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px;
+  }
+
+  .cm-param-file-actions {
+    align-self: flex-end;
+  }
+}

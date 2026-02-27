@@ -26,6 +26,8 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
+  Paperclip,
+  FileUp,
 } from 'lucide-react';
 
 
@@ -56,6 +58,9 @@ import {
   uploadAttachment,
   deleteDocument,
   validatePartCode as apiValidatePartCode,
+  uploadParamReferenceFile,
+  deleteParamReferenceFile,
+  getParamReferenceFileUrl,
 } from './api/componentMasterApi';
 
 import {
@@ -223,6 +228,11 @@ const ComponentMasterEntryPage = () => {
           unit: p.unit || '',
           specification: p.specification || '',
           instrumentName: p.instrumentName || '',
+          referenceFile: null,
+          referenceFileName: p.referenceFileName || null,
+          referenceFileSize: p.referenceFileSize || null,
+          referenceMimeType: p.referenceMimeType || null,
+          referenceFileParamId: p.id || null,
         })));
       }
       if (comp.functionalParams && comp.functionalParams.length > 0) {
@@ -468,6 +478,29 @@ const ComponentMasterEntryPage = () => {
         }
       }
 
+      // Upload reference files for visual params
+      if (componentId && visualEnabled) {
+        try {
+          const savedComponent = await getComponentById(componentId);
+          const savedVisualParams = savedComponent?.visualParams || [];
+          for (let i = 0; i < visualParams.length; i++) {
+            const localParam = visualParams[i];
+            if (localParam.referenceFile && localParam.referenceFile instanceof File) {
+              const serverParam = savedVisualParams[i];
+              if (serverParam?.id) {
+                try {
+                  await uploadParamReferenceFile(serverParam.id, localParam.referenceFile);
+                } catch (uploadErr) {
+                  console.error(`Error uploading reference file for param ${i + 1}:`, uploadErr);
+                }
+              }
+            }
+          }
+        } catch (refErr) {
+          console.error('Error uploading reference files:', refErr);
+        }
+      }
+
       setShowSuccess(true);
     } catch (error) {
       console.error(`Error ${isEditing ? 'updating' : 'creating'} component:`, error);
@@ -484,7 +517,7 @@ const ComponentMasterEntryPage = () => {
     setPartCodeValid(false);
     setVisualEnabled(false);
     setFunctionalEnabled(false);
-    setVisualParams([{ id: 1, checkingPoint: '', unit: '', specification: '', instrumentName: '' }]);
+    setVisualParams([{ id: 1, checkingPoint: '', unit: '', specification: '', instrumentName: '', referenceFile: null, referenceFileName: null, referenceFileSize: null, referenceMimeType: null, referenceFileParamId: null }]);
     setFunctionalParams([{ id: 1, checkingPoint: '', unit: 'mm', specification: '', instrumentName: '', toleranceMin: '', toleranceMax: '' }]);
     setVisualCollapsed(false);
     setFunctionalCollapsed(false);
@@ -526,7 +559,7 @@ const ComponentMasterEntryPage = () => {
 
   const addVisualParam = () => {
     const newId = Math.max(...visualParams.map(p => p.id), 0) + 1;
-    setVisualParams([...visualParams, { id: newId, checkingPoint: '', unit: '', specification: '', instrumentName: '' }]);
+    setVisualParams([...visualParams, { id: newId, checkingPoint: '', unit: '', specification: '', instrumentName: '', referenceFile: null, referenceFileName: null, referenceFileSize: null, referenceMimeType: null, referenceFileParamId: null }]);
   };
 
   const removeVisualParam = (id) => {
@@ -539,6 +572,38 @@ const ComponentMasterEntryPage = () => {
     setVisualParams(visualParams.map(p =>
       p.id === id ? { ...p, [field]: value } : p
     ));
+  };
+
+  const handleVisualParamFileChange = (paramId, file) => {
+    if (!file) {
+      setVisualParams(prev => prev.map(p =>
+        p.id === paramId ? { ...p, referenceFile: null, referenceFileName: null, referenceFileSize: null, referenceMimeType: null } : p
+      ));
+      return;
+    }
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['pdf', 'jpg', 'jpeg', 'png'].includes(ext)) {
+      alert('Invalid file type. Allowed: PDF, JPG, JPEG, PNG');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size exceeds 5 MB limit');
+      return;
+    }
+    setVisualParams(prev => prev.map(p =>
+      p.id === paramId ? { ...p, referenceFile: file, referenceFileName: file.name, referenceFileSize: file.size, referenceMimeType: file.type } : p
+    ));
+  };
+
+  const handleDeleteParamReferenceFile = async (paramId, serverParamId) => {
+    if (serverParamId) {
+      try {
+        await deleteParamReferenceFile(serverParamId);
+      } catch (err) {
+        console.error('Error deleting reference file:', err);
+      }
+    }
+    handleVisualParamFileChange(paramId, null);
   };
 
 
@@ -960,6 +1025,7 @@ const ComponentMasterEntryPage = () => {
                           <div className="cm-param-col cm-param-col-unit">Unit</div>
                           <div className="cm-param-col cm-param-col-spec">Specification</div>
                           <div className="cm-param-col cm-param-col-inst">Instrument</div>
+                          <div className="cm-param-col cm-param-col-file">Ref. File</div>
                           <div className="cm-param-col cm-param-col-action">Action</div>
                         </div>
                         {visualParams.map((param, index) => (
@@ -1004,6 +1070,74 @@ const ComponentMasterEntryPage = () => {
                                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                                 ))}
                               </select>
+                            </div>
+                            <div className="cm-param-col cm-param-col-file">
+                              {(param.referenceFile || param.referenceFileName) ? (
+                                <div className="cm-param-file-attached">
+                                  <div className="cm-param-file-info">
+                                    <Paperclip size={14} style={{ color: 'var(--cm-success)', flexShrink: 0 }} />
+                                    <span className="cm-param-file-name" title={param.referenceFileName}>
+                                      {param.referenceFileName
+                                        ? (param.referenceFileName.length > 18
+                                          ? param.referenceFileName.substring(0, 15) + '...'
+                                          : param.referenceFileName)
+                                        : 'File attached'
+                                      }
+                                    </span>
+                                  </div>
+                                  <div className="cm-param-file-actions">
+                                    {param.referenceFileParamId && !param.referenceFile && (
+                                      <button
+                                        type="button"
+                                        className="cm-param-file-btn cm-param-file-btn-view"
+                                        onClick={() => {
+                                          const url = getParamReferenceFileUrl(param.referenceFileParamId);
+                                          window.open(url, '_blank');
+                                        }}
+                                        title="View file"
+                                      >
+                                        <Eye size={13} />
+                                      </button>
+                                    )}
+                                    <label className="cm-param-file-btn cm-param-file-btn-reupload" title="Replace file">
+                                      <FileUp size={13} />
+                                      <input
+                                        type="file"
+                                        accept=".pdf,.jpg,.jpeg,.png"
+                                        style={{ display: 'none' }}
+                                        onChange={(e) => {
+                                          const file = e.target.files[0];
+                                          if (file) handleVisualParamFileChange(param.id, file);
+                                          e.target.value = '';
+                                        }}
+                                      />
+                                    </label>
+                                    <button
+                                      type="button"
+                                      className="cm-param-file-btn cm-param-file-btn-delete"
+                                      onClick={() => handleDeleteParamReferenceFile(param.id, param.referenceFileParamId)}
+                                      title="Remove file"
+                                    >
+                                      <Trash2 size={13} />
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <label className="cm-param-file-upload-btn">
+                                  <FileUp size={14} />
+                                  <span>Upload</span>
+                                  <input
+                                    type="file"
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                    style={{ display: 'none' }}
+                                    onChange={(e) => {
+                                      const file = e.target.files[0];
+                                      if (file) handleVisualParamFileChange(param.id, file);
+                                      e.target.value = '';
+                                    }}
+                                  />
+                                </label>
+                              )}
                             </div>
                             <div className="cm-param-col cm-param-col-action">
                               <button
@@ -1191,6 +1325,7 @@ const ComponentMasterEntryPage = () => {
                                   <th>Unit</th>
                                   <th>Specification</th>
                                   <th>Instrument</th>
+                                  <th>Ref. File</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -1201,6 +1336,7 @@ const ComponentMasterEntryPage = () => {
                                     <td>{p.unit || '—'}</td>
                                     <td>{p.specification || '—'}</td>
                                     <td>{p.instrumentName || '—'}</td>
+                                    <td>{(p.referenceFile || p.referenceFileName) ? <span className="cm-param-file-present">✅ {p.referenceFileName}</span> : <span style={{ color: '#999', fontSize: '11px' }}>— None</span>}</td>
                                   </tr>
                                 ))}
                               </tbody>

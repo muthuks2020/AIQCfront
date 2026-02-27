@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Copy, Edit2, Trash2, Loader2 } from 'lucide-react';
+import { COMPONENT_API_CONFIG } from '../api/componentMasterApi';
 import '../styles/ComponentDetailModal.css';
 
 const ComponentDetailModal = ({
@@ -203,6 +204,96 @@ const ComponentDetailModal = ({
               {params.length} total parameter{params.length !== 1 ? 's' : ''}
               {isCombined && ' (Combined Inspection)'}
             </span>
+
+            {/* Visual Params Table */}
+            {isVisual && visualParams.length > 0 && (
+              <div style={{ marginTop: '12px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: '#1565C0' }}>
+                  👁 Visual Inspection Parameters
+                </div>
+                <table className="cdm-params-table" style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#F8FAFC', textAlign: 'left' }}>
+                      <th style={{ padding: '6px 8px', borderBottom: '1px solid #E2E8F0', width: '30px' }}>#</th>
+                      <th style={{ padding: '6px 8px', borderBottom: '1px solid #E2E8F0' }}>Checking Point</th>
+                      <th style={{ padding: '6px 8px', borderBottom: '1px solid #E2E8F0' }}>Unit</th>
+                      <th style={{ padding: '6px 8px', borderBottom: '1px solid #E2E8F0' }}>Specification</th>
+                      <th style={{ padding: '6px 8px', borderBottom: '1px solid #E2E8F0' }}>Instrument</th>
+                      <th style={{ padding: '6px 8px', borderBottom: '1px solid #E2E8F0' }}>Ref. File</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visualParams.map((p, i) => (
+                      <tr key={p.id || i} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                        <td style={{ padding: '6px 8px' }}>{i + 1}</td>
+                        <td style={{ padding: '6px 8px', fontWeight: 500 }}>{p.checkingPoint || '—'}</td>
+                        <td style={{ padding: '6px 8px' }}>{p.unit || '—'}</td>
+                        <td style={{ padding: '6px 8px' }}>{p.specification || '—'}</td>
+                        <td style={{ padding: '6px 8px' }}>{p.instrumentName || '—'}</td>
+                        <td style={{ padding: '6px 8px' }}>
+                          {p.referenceFileName ? (
+                            <a
+                              href={`${COMPONENT_API_CONFIG.baseUrl}/components/params/${p.id}/reference-file`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                color: '#1565C0',
+                                fontSize: '12px',
+                                textDecoration: 'none',
+                              }}
+                              title={p.referenceFileName}
+                            >
+                              📎 {p.referenceFileName.length > 15
+                                ? p.referenceFileName.substring(0, 12) + '...'
+                                : p.referenceFileName
+                              }
+                            </a>
+                          ) : (
+                            <span style={{ color: '#999', fontSize: '12px' }}>—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Functional Params Table */}
+            {isFunctional && functionalParams.length > 0 && (
+              <div style={{ marginTop: '12px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: '#E65100' }}>
+                  🔧 Functional Testing Parameters
+                </div>
+                <table className="cdm-params-table" style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#F8FAFC', textAlign: 'left' }}>
+                      <th style={{ padding: '6px 8px', borderBottom: '1px solid #E2E8F0', width: '30px' }}>#</th>
+                      <th style={{ padding: '6px 8px', borderBottom: '1px solid #E2E8F0' }}>Checking Point</th>
+                      <th style={{ padding: '6px 8px', borderBottom: '1px solid #E2E8F0' }}>Specification</th>
+                      <th style={{ padding: '6px 8px', borderBottom: '1px solid #E2E8F0' }}>Tol. Min</th>
+                      <th style={{ padding: '6px 8px', borderBottom: '1px solid #E2E8F0' }}>Tol. Max</th>
+                      <th style={{ padding: '6px 8px', borderBottom: '1px solid #E2E8F0' }}>Instrument</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {functionalParams.map((p, i) => (
+                      <tr key={p.id || i} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                        <td style={{ padding: '6px 8px' }}>{i + 1}</td>
+                        <td style={{ padding: '6px 8px', fontWeight: 500 }}>{p.checkingPoint || '—'}</td>
+                        <td style={{ padding: '6px 8px' }}>{p.specification || '—'}</td>
+                        <td style={{ padding: '6px 8px' }}>{p.toleranceMin || '—'}</td>
+                        <td style={{ padding: '6px 8px' }}>{p.toleranceMax || '—'}</td>
+                        <td style={{ padding: '6px 8px' }}>{p.instrumentName || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         );
       })()}

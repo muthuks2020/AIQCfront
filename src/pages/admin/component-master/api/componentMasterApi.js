@@ -62,6 +62,10 @@ const ENDPOINTS = {
 
   // Sampling Plans (for inline creation)
   samplingPlans:        `${COMPONENT_API_CONFIG.baseUrl}/sampling-plans`,
+
+  // Param reference file
+  paramUploadReference: (paramId) => `${COMPONENT_API_CONFIG.baseUrl}/components/params/${paramId}/upload-reference`,
+  paramReferenceFile:   (paramId) => `${COMPONENT_API_CONFIG.baseUrl}/components/params/${paramId}/reference-file`,
 };
 
 
@@ -187,6 +191,12 @@ const transformers = {
     inputType:      p.input_type || 'measurement',
     sortOrder:      p.sort_order || 0,
     isMandatory:    p.is_mandatory !== false,
+    // Reference file fields
+    referenceFileName:       p.reference_original_name || null,
+    referenceFilePath:       p.reference_file_path || null,
+    referenceFileSize:       p.reference_file_size || null,
+    referenceMimeType:       p.reference_mime_type || null,
+    referenceFileStoredName: p.reference_file_name || null,
   }),
 
   checkingParamToApi: (p, lookupCache = {}) => {
@@ -1035,6 +1045,64 @@ export const createSamplingPlanInline = async (planData) => {
 };
 
 
+// =============================================================================
+// Param reference file operations
+// =============================================================================
+export const uploadParamReferenceFile = async (paramId, file) => {
+  logApiCall('POST', ENDPOINTS.paramUploadReference(paramId), { fileName: file.name });
+
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(800);
+    return {
+      success: true,
+      param_id: paramId,
+      file_name: file.name,
+      file_size: file.size,
+      mime_type: file.type,
+    };
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(ENDPOINTS.paramUploadReference(paramId), {
+    method: 'POST',
+    headers: getMultipartHeaders(),
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(errorBody.message || 'Failed to upload reference file');
+  }
+
+  const result = await response.json();
+  return { success: true, ...(result.data || result) };
+};
+
+
+export const deleteParamReferenceFile = async (paramId) => {
+  logApiCall('DELETE', ENDPOINTS.paramReferenceFile(paramId));
+
+  if (COMPONENT_API_CONFIG.useMockData) {
+    await delay(400);
+    return { success: true };
+  }
+
+  const result = await apiFetch(ENDPOINTS.paramReferenceFile(paramId), {
+    method: 'DELETE',
+  });
+
+  return { success: true, ...result };
+};
+
+
+export const getParamReferenceFileUrl = (paramId) => {
+  const token = localStorage.getItem('authToken');
+  return `${ENDPOINTS.paramReferenceFile(paramId)}${token ? `?token=${token}` : ''}`;
+};
+
+
 export const API_CONFIG = {
   USE_MOCK_DATA: COMPONENT_API_CONFIG.useMockData,
   API_BASE_URL:  COMPONENT_API_CONFIG.baseUrl,
@@ -1067,6 +1135,10 @@ export default {
   exportComponents,
   importComponents,
   createSamplingPlanInline,
+
+  uploadParamReferenceFile,
+  deleteParamReferenceFile,
+  getParamReferenceFileUrl,
 
   clearLookupCache,
 };
