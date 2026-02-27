@@ -16,6 +16,7 @@ import {
   Shield,
   Award,
   AlertCircle,
+  Package,
 } from 'lucide-react';
 
 import {
@@ -230,46 +231,55 @@ const QualityPlanConfigPage = () => {
 
   const handleReset = () => {
     if (window.confirm('Are you sure you want to reset the form?')) {
-      setFormData({ ...getInitialQualityPlanState() });
-      setErrors({}); setTouched({}); setPlanNoValid(false); setSelectedDepartment(null);
+      setFormData(getInitialQualityPlanState());
+      setErrors({});
+      setTouched({});
+      setPlanNoValid(false);
     }
   };
 
-  const handleSuccessClose = () => { setShowSuccess(false); navigate('/admin/sampling-master'); };
+  const handleSuccessClose = () => {
+    setShowSuccess(false);
+    navigate('/admin/sampling-master');
+  };
+
   const handleCreateAnother = () => {
     setShowSuccess(false);
-    setFormData({ ...getInitialQualityPlanState() });
-    setErrors({}); setTouched({}); setPlanNoValid(false); setSelectedDepartment(null);
+    setFormData(getInitialQualityPlanState());
+    setErrors({});
+    setTouched({});
+    setPlanNoValid(false);
   };
 
 
-  // ═══════════════════════════════════════════════════════════════
-  // Render
-  // ═══════════════════════════════════════════════════════════════
   if (isLoading) {
     return (
-      <div className="sm-page"><div className="sm-content">
-        <LoadingSpinner message="Loading quality plan..." />
-      </div></div>
+      <div className="sm-page">
+        <div className="sm-content">
+          <LoadingSpinner message="Loading quality plan..." />
+        </div>
+      </div>
     );
   }
 
   return (
     <div className="sm-page">
-      <div className="sm-content" style={{ maxWidth: '960px', margin: '0 auto', padding: '16px 20px' }}>
-
+      <div className="sm-content">
         {/* ─── Page Header ────────────────────────────────────── */}
-        <div className="sm-page-header" style={{ marginBottom: '12px', padding: '12px 0' }}>
-          <div className="sm-page-header-left" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button className="sm-back-btn" onClick={() => navigate('/admin/sampling-master')}
-              title="Back to list" style={{ padding: '6px' }}>
-              <ArrowLeft size={18} />
+        <div className="sm-page-header">
+          <div className="sm-page-header-left">
+            <button
+              className="sm-back-btn"
+              onClick={() => navigate('/admin/sampling-master')}
+              title="Back to list"
+            >
+              <ArrowLeft size={20} />
             </button>
-            <div className="sm-page-icon" style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <ClipboardList size={20} />
+            <div className="sm-page-icon">
+              <ClipboardList size={28} />
             </div>
             <div>
-              <h1 className="sm-page-title" style={{ fontSize: '18px', margin: 0 }}>
+              <h1 className="sm-page-title">
                 {isEditing ? 'Edit Quality Plan' : 'Create Quality Plan'}
               </h1>
               <p className="sm-page-subtitle" style={{ fontSize: '12px', margin: '2px 0 0', opacity: 0.7 }}>
@@ -345,24 +355,34 @@ const QualityPlanConfigPage = () => {
                   />
                 </div>
                 <div className="sm-form-grid sm-form-grid-2" style={{ marginTop: '12px' }}>
+                  {/* ── Product Name (uses qc_product_categories via category_id) ── */}
+                  <FormSelect
+                    label="Product Name" name="productId"
+                    value={formData.productId}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    options={products.map(p => ({ id: p.id, name: p.name }))}
+                    placeholder="Select product name"
+                    required loading={loadingProducts}
+                    error={touched.productId && errors.productId}
+                  />
                   <FormInput
                     label="Document / Revision No" name="documentRevNo" value={formData.documentRevNo}
                     onChange={handleChange} onBlur={handleBlur} placeholder="e.g., Rev-03"
                     error={touched.documentRevNo && errors.documentRevNo} icon={Link2}
                   />
+                </div>
+                <div className="sm-form-grid sm-form-grid-2" style={{ marginTop: '12px' }}>
                   <FormInput
                     label="Effective Date" name="effectiveDate" type="date" value={formData.effectiveDate}
                     onChange={handleChange} onBlur={handleBlur} required
                     error={touched.effectiveDate && errors.effectiveDate} icon={Calendar}
                   />
-                </div>
-                <div className="sm-form-grid sm-form-grid-2" style={{ marginTop: '12px' }}>
                   <FormInput
                     label="Revision Date" name="revisionDate" type="date" value={formData.revisionDate}
                     onChange={handleChange} onBlur={handleBlur}
                     error={touched.revisionDate && errors.revisionDate} icon={Calendar}
                   />
-                  <div />
                 </div>
               </FormSection>
 
@@ -394,7 +414,7 @@ const QualityPlanConfigPage = () => {
                   />
                 </div>
 
-                {/* Row 2: Department + Product Category */}
+                {/* Row 2: Department (full width) */}
                 <div className="sm-form-grid sm-form-grid-2" style={{ marginTop: '12px' }}>
                   <FormSelect
                     label="Department" name="departmentId"
@@ -406,16 +426,7 @@ const QualityPlanConfigPage = () => {
                     required loading={loadingDepartments}
                     error={touched.departmentId && errors.departmentId}
                   />
-                  <FormSelect
-                    label="Product Category" name="productId"
-                    value={formData.productId}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    options={products.map(p => ({ id: p.id, name: p.name }))}
-                    placeholder="Select product category"
-                    loading={loadingProducts}
-                    error={touched.productId && errors.productId}
-                  />
+                  <div />
                 </div>
 
                 {/* Department Info panel */}
