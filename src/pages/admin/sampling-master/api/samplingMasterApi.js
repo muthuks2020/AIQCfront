@@ -45,6 +45,8 @@ const ENDPOINTS = {
 
   departments:          `${SAMPLING_API_CONFIG.baseUrl}/departments`,
   categories:           `${SAMPLING_API_CONFIG.baseUrl}/categories`,
+  companies:            `${SAMPLING_API_CONFIG.baseUrl}/lookups/companies`,
+  cityLocations:        `${SAMPLING_API_CONFIG.baseUrl}/lookups/city-locations`,
 
   lookupSamplingPlans:  `${SAMPLING_API_CONFIG.baseUrl}/lookups/sampling-plans`,
   lookupQcPlans:        `${SAMPLING_API_CONFIG.baseUrl}/lookups/qc-plans`,
@@ -802,6 +804,55 @@ export const fetchProducts = async () => {
 };
 
 
+export const fetchCompanies = async () => {
+  logApiCall('GET', ENDPOINTS.companies);
+
+  if (SAMPLING_API_CONFIG.useMockData) {
+    await delay(300);
+    return {
+      success: true,
+      data: [{ id: 1, code: 'COMP-APPASAMY', name: 'Appasamy Associates Pvt Ltd' }],
+    };
+  }
+
+  const result = await apiFetch(ENDPOINTS.companies);
+  return {
+    success: true,
+    data: (result.data || []).map(c => ({
+      id: c.id,
+      code: c.company_code,
+      name: c.company_name,
+    })),
+  };
+};
+
+
+export const fetchCityLocations = async () => {
+  logApiCall('GET', ENDPOINTS.cityLocations);
+
+  if (SAMPLING_API_CONFIG.useMockData) {
+    await delay(300);
+    return {
+      success: true,
+      data: [
+        { id: 1, code: 'CITY-CHENNAI', name: 'Chennai' },
+        { id: 2, code: 'CITY-PONDY', name: 'Pondy' },
+      ],
+    };
+  }
+
+  const result = await apiFetch(ENDPOINTS.cityLocations);
+  return {
+    success: true,
+    data: (result.data || []).map(l => ({
+      id: l.id,
+      code: l.location_code,
+      name: l.city_name,
+    })),
+  };
+};
+
+
 export const getLotSizeRanges = () => LOT_SIZE_RANGES;
 export const getAQLTables = () => AQL_TABLES;
 
@@ -826,6 +877,8 @@ export default {
 
   fetchDepartments,
   fetchProducts,
+  fetchCompanies,
+  fetchCityLocations,
 
   getLotSizeRanges,
   getAQLTables,

@@ -52,6 +52,12 @@ const VALIDATION_RULES = {
   departmentId: {
     required: true,
   },
+  company: {                                                    // ← NEW
+    required: true,
+  },
+  location: {                                                   // ← NEW
+    required: true,
+  },
 };
 
 
@@ -115,9 +121,9 @@ export const validateField = (fieldName, value, formData = {}) => {
 export const validateSamplingPlanForm = (formData) => {
   const errors = {};
 
-  // Basic fields
-  const basicFields = ['samplePlanNo', 'samplePlanType', 'iterations'];
-  basicFields.forEach(field => {
+  // Top-level fields
+  const fields = ['samplePlanNo', 'samplePlanType', 'iterations'];
+  fields.forEach(field => {
     const error = validateField(field, formData[field], formData);
     if (error) errors[field] = error;
   });
@@ -130,37 +136,27 @@ export const validateSamplingPlanForm = (formData) => {
     formData.lotRanges.forEach((range, index) => {
       const rangeErrors = {};
 
-      if (!range.lotMin || range.lotMin < 1) {
-        rangeErrors.lotMin = 'Lot Min is required';
-        hasRangeErrors = true;
-      }
+      // Lot min/max validation
+      const lotMinError = validateField('lotMin', range.lotMin, formData);
+      if (lotMinError) { rangeErrors.lotMin = lotMinError; hasRangeErrors = true; }
 
-      if (!range.lotMax || range.lotMax < 1) {
-        rangeErrors.lotMax = 'Lot Max is required';
-        hasRangeErrors = true;
-      } else if (range.lotMin && Number(range.lotMax) < Number(range.lotMin)) {
-        rangeErrors.lotMax = 'Max must be >= Min';
-        hasRangeErrors = true;
-      }
+      const lotMaxError = validateField('lotMax', range.lotMax, { lotMin: range.lotMin });
+      if (lotMaxError) { rangeErrors.lotMax = lotMaxError; hasRangeErrors = true; }
 
-      if (range.iteration1 !== undefined && range.iteration1 !== '' && range.iteration1 !== null) {
-        if (Number(range.iteration1) < 1) {
-          rangeErrors.iteration1 = 'Sample size must be at least 1';
+      // Sample size validation
+      if (range.iteration1 !== undefined) {
+        const sampleSize = Number(range.iteration1);
+        const lotMax = Number(range.lotMax);
+        if (isNaN(sampleSize) || sampleSize < 1) {
+          rangeErrors.iteration1 = 'Sample size must be >= 1';
           hasRangeErrors = true;
-        }
-        if (range.lotMax && Number(range.iteration1) > Number(range.lotMax)) {
-          rangeErrors.iteration1 = 'Cannot exceed lot max';
+        } else if (lotMax && sampleSize > lotMax) {
+          rangeErrors.iteration1 = 'Sample size cannot exceed lot max';
           hasRangeErrors = true;
         }
       }
 
-      if (range.passRequired1 !== undefined && range.iteration1 !== undefined) {
-        if (Number(range.passRequired1) > Number(range.iteration1)) {
-          rangeErrors.passRequired1 = 'Cannot exceed sample qty';
-          hasRangeErrors = true;
-        }
-      }
-
+      // Accept/Reject validation
       if (range.acceptNumber !== undefined && range.rejectNumber !== undefined) {
         if (Number(range.acceptNumber) < 0) {
           rangeErrors.acceptNumber = 'Accept number must be >= 0';
@@ -205,7 +201,8 @@ export const validateSamplingPlanForm = (formData) => {
 export const validateQualityPlanForm = (formData) => {
   const errors = {};
 
-  const fields = ['qcPlanNo', 'productId', 'documentRevNo', 'revisionDate', 'departmentId'];
+  // ── UPDATED: added 'company' and 'location' ──
+  const fields = ['qcPlanNo', 'productId', 'documentRevNo', 'revisionDate', 'departmentId', 'company', 'location'];
   fields.forEach(field => {
     const error = validateField(field, formData[field], formData);
     if (error) errors[field] = error;
@@ -260,6 +257,8 @@ export const getInitialQualityPlanState = () => ({
   revisionDate: new Date().toISOString().split('T')[0],
   effectiveDate: '',
   departmentId: '',
+  company: '',                                                  // ← NEW
+  location: '',                                                 // ← NEW
   description: '',
   planType: 'standard',
   inspectionStages: 1,
