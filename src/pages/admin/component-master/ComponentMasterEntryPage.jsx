@@ -832,10 +832,7 @@ const ComponentMasterEntryPage = () => {
                 )}
               </FormSection>
 
-              {/* ══════════════════════════════════════════════════════════
-                  Step 4: Documentation & Compliance — REDESIGNED
-                  Only Specification Document checkbox + single file upload
-                  ══════════════════════════════════════════════════════════ */}
+              {/* Step 4: Documentation & Compliance */}
               <FormSection
                 icon={FileText}
                 title="Documentation & Compliance"
@@ -843,37 +840,186 @@ const ComponentMasterEntryPage = () => {
               >
                 <div style={{
                   display: 'flex',
-                  alignItems: 'stretch',
-                  gap: '16px',
-                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: '20px',
+                  padding: '16px 20px',
+                  background: 'var(--cm-gray-50, #F8FAFC)',
+                  border: '2px solid var(--cm-gray-200, #E2E8F0)',
+                  borderRadius: 'var(--cm-radius-lg, 12px)',
                 }}>
-                  {/* Specification Document Toggle */}
-                  <div style={{ flex: '0 0 280px', minWidth: '240px' }}>
-                    <FormCheckboxCard
-                      label="Specification Document"
-                      name="specRequired"
-                      checked={formData.specRequired}
-                      onChange={handleChange}
-                      description="Detailed specification required"
-                      icon={FileText}
-                    />
+                  {/* Left: Checkbox toggle */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                    }}
+                    onClick={() => handleChange({ target: { name: 'specRequired', checked: !formData.specRequired, type: 'checkbox' } })}
+                  >
+                    <div style={{
+                      width: '22px',
+                      height: '22px',
+                      borderRadius: '6px',
+                      border: `2px solid ${formData.specRequired ? 'var(--cm-success, #10B981)' : 'var(--cm-gray-300, #CBD5E1)'}`,
+                      background: formData.specRequired ? 'var(--cm-success, #10B981)' : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.2s ease',
+                      flexShrink: 0,
+                    }}>
+                      {formData.specRequired && <Check size={14} color="white" strokeWidth={3} />}
+                    </div>
+                    <FileText size={20} style={{ color: formData.specRequired ? 'var(--cm-success, #10B981)' : 'var(--cm-gray-400, #94A3B8)' }} />
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--cm-gray-700, #334155)' }}>
+                        Specification Document
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--cm-gray-400, #94A3B8)', marginTop: '1px' }}>
+                        Detailed specification required
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Specification Document Upload — shown only when toggled on */}
-                  {formData.specRequired && (
-                    <div style={{ flex: '1 1 300px', minWidth: '260px' }}>
-                      <FormFileUpload
-                        label="Upload Specification Document"
-                        name="specFile"
-                        value={formData.specFile}
-                        onChange={handleFileChange}
-                        accept=".pdf,.png,.jpg,.jpeg,.xlsx,.docx"
-                        maxSize={10}
-                        error={errors.specFile}
-                        description="PDF, PNG, JPG, XLSX or DOCX (max 10MB)"
-                      />
-                    </div>
-                  )}
+                  {/* Divider */}
+                  <div style={{
+                    width: '1px',
+                    height: '40px',
+                    background: 'var(--cm-gray-200, #E2E8F0)',
+                    flexShrink: 0,
+                  }} />
+
+                  {/* Right: Compact upload area */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {!formData.specFile ? (
+                      <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '14px',
+                        padding: '12px 18px',
+                        border: '2px dashed var(--cm-gray-300, #CBD5E1)',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        background: 'white',
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--cm-primary, #003366)';
+                        e.currentTarget.style.background = 'var(--cm-primary-light, #EEF2FF)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--cm-gray-300, #CBD5E1)';
+                        e.currentTarget.style.background = 'white';
+                      }}
+                      >
+                        <div style={{
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '8px',
+                          background: 'var(--cm-primary-light, #EEF2FF)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}>
+                          <FileUp size={18} style={{ color: 'var(--cm-primary, #003366)' }} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--cm-gray-700, #334155)' }}>
+                            Upload Specification Document
+                          </div>
+                          <div style={{ fontSize: '11px', color: 'var(--cm-gray-400, #94A3B8)', marginTop: '2px' }}>
+                            PDF, PNG, JPG, XLSX or DOCX — max 10MB
+                          </div>
+                        </div>
+                        <input
+                          type="file"
+                          accept=".pdf,.png,.jpg,.jpeg,.xlsx,.docx"
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              const sizeMB = file.size / (1024 * 1024);
+                              if (sizeMB > 10) {
+                                handleFileChange({ target: { name: 'specFile', value: null, error: `File must be under 10MB (yours: ${sizeMB.toFixed(1)}MB)` } });
+                              } else {
+                                handleFileChange({ target: { name: 'specFile', value: file } });
+                              }
+                            }
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                    ) : (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '10px 16px',
+                        border: '2px solid var(--cm-success, #10B981)',
+                        borderRadius: '8px',
+                        background: 'var(--cm-success-light, #F0FDF4)',
+                      }}>
+                        <div style={{
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '8px',
+                          background: 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}>
+                          <FileText size={18} style={{ color: 'var(--cm-success, #10B981)' }} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: 'var(--cm-gray-700, #334155)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}>
+                            {formData.specFile.name}
+                          </div>
+                          <div style={{ fontSize: '11px', color: 'var(--cm-gray-400, #94A3B8)', marginTop: '2px' }}>
+                            {(formData.specFile.size / (1024 * 1024)).toFixed(2)} MB
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleFileChange({ target: { name: 'specFile', value: null } })}
+                          style={{
+                            width: '30px',
+                            height: '30px',
+                            border: 'none',
+                            borderRadius: '6px',
+                            background: 'var(--cm-danger-light, #FEF2F2)',
+                            color: 'var(--cm-danger, #EF4444)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.2s ease',
+                            flexShrink: 0,
+                          }}
+                          onMouseOver={(e) => { e.currentTarget.style.background = 'var(--cm-danger, #EF4444)'; e.currentTarget.style.color = 'white'; }}
+                          onMouseOut={(e) => { e.currentTarget.style.background = 'var(--cm-danger-light, #FEF2F2)'; e.currentTarget.style.color = 'var(--cm-danger, #EF4444)'; }}
+                          title="Remove file"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    )}
+                    {errors.specFile && (
+                      <span style={{ fontSize: '12px', color: 'var(--cm-danger, #EF4444)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px' }}>
+                        <AlertCircle size={12} /> {errors.specFile}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </FormSection>
 
