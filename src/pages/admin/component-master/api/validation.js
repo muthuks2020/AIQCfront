@@ -4,7 +4,7 @@ export const VALIDATION_RULES = {
     message: 'Please select a product category',
   },
   productGroup: {
-    required: true,
+    required: false,     // ← Was true — field removed from form
     message: 'Please select a product group',
   },
   partCode: {
