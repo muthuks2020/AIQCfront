@@ -254,6 +254,7 @@ const ComponentMasterEntryPage = () => {
 
         const docTypeToField = {
           'specification': 'specFile',
+          'drawing': 'drawingAttachment',
         };
 
         const fileUpdates = {};
@@ -462,8 +463,8 @@ const ComponentMasterEntryPage = () => {
       // Upload any NEW files (actual File objects, not existing server files)
       const componentId = isEditing ? id : (savedComp?.id || null);
       if (componentId) {
-        // Only upload specFile now
-        const fileFields = ['specFile'];
+        // Only upload specFile and drawingAttachment now
+        const fileFields = ['specFile', 'drawingAttachment'];
         for (const fieldName of fileFields) {
           const fileVal = formData[fieldName];
           if (fileVal && fileVal instanceof File) {
@@ -707,19 +708,6 @@ const ComponentMasterEntryPage = () => {
 
                 <div className="cm-form-grid cm-form-grid-2" style={{ marginTop: '24px' }}>
                   <FormSelect
-                    label="Product Group"
-                    name="productGroup"
-                    value={formData.productGroup}
-                    onChange={handleChange}
-                    options={productGroups}
-                    placeholder={formData.productCategory ? 'Select product group' : 'Select category first'}
-                    error={touched.productGroup && errors.productGroup}
-                    onBlur={handleBlur}
-                    required
-                    disabled={!formData.productCategory}
-                    loading={loadingGroups}
-                  />
-                  <FormSelect
                     label="QC Plan"
                     name="qcPlanNo"
                     value={formData.qcPlanNo}
@@ -770,15 +758,6 @@ const ComponentMasterEntryPage = () => {
                   />
                 </div>
                 <div className="cm-form-grid cm-form-grid-2" style={{ marginTop: '16px' }}>
-                  <FormInput
-                    label="Drawing Number"
-                    name="drawingNo"
-                    value={formData.drawingNo}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    error={touched.drawingNo && errors.drawingNo}
-                    placeholder="e.g., DWG-001-R3"
-                  />
                   <FormSelect
                     label="PR Process Code"
                     name="prProcessCode"
@@ -838,188 +817,185 @@ const ComponentMasterEntryPage = () => {
                 title="Documentation & Compliance"
                 badge="Step 4 of 5"
               >
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '20px',
-                  padding: '16px 20px',
-                  background: 'var(--cm-gray-50, #F8FAFC)',
-                  border: '2px solid var(--cm-gray-200, #E2E8F0)',
-                  borderRadius: 'var(--cm-radius-lg, 12px)',
-                }}>
-                  {/* Left: Checkbox toggle */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      cursor: 'pointer',
-                      flexShrink: 0,
-                    }}
-                    onClick={() => handleChange({ target: { name: 'specRequired', checked: !formData.specRequired, type: 'checkbox' } })}
-                  >
-                    <div style={{
-                      width: '22px',
-                      height: '22px',
-                      borderRadius: '6px',
-                      border: `2px solid ${formData.specRequired ? 'var(--cm-success, #10B981)' : 'var(--cm-gray-300, #CBD5E1)'}`,
-                      background: formData.specRequired ? 'var(--cm-success, #10B981)' : 'transparent',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.2s ease',
-                      flexShrink: 0,
-                    }}>
-                      {formData.specRequired && <Check size={14} color="white" strokeWidth={3} />}
-                    </div>
-                    <FileText size={20} style={{ color: formData.specRequired ? 'var(--cm-success, #10B981)' : 'var(--cm-gray-400, #94A3B8)' }} />
-                    <div>
-                      <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--cm-gray-700, #334155)' }}>
-                        Specification Document
-                      </div>
-                      <div style={{ fontSize: '12px', color: 'var(--cm-gray-400, #94A3B8)', marginTop: '1px' }}>
-                        Detailed specification required
-                      </div>
-                    </div>
-                  </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
-                  {/* Divider */}
+                  {/* ── Row 1: Specification Document ── */}
                   <div style={{
-                    width: '1px',
-                    height: '40px',
-                    background: 'var(--cm-gray-200, #E2E8F0)',
-                    flexShrink: 0,
-                  }} />
-
-                  {/* Right: Compact upload area */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    {!formData.specFile ? (
-                      <label style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '14px',
-                        padding: '12px 18px',
-                        border: '2px dashed var(--cm-gray-300, #CBD5E1)',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        background: 'white',
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--cm-primary, #003366)';
-                        e.currentTarget.style.background = 'var(--cm-primary-light, #EEF2FF)';
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--cm-gray-300, #CBD5E1)';
-                        e.currentTarget.style.background = 'white';
-                      }}
-                      >
-                        <div style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '8px',
-                          background: 'var(--cm-primary-light, #EEF2FF)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                        }}>
-                          <FileUp size={18} style={{ color: 'var(--cm-primary, #003366)' }} />
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--cm-gray-700, #334155)' }}>
-                            Upload Specification Document
-                          </div>
-                          <div style={{ fontSize: '11px', color: 'var(--cm-gray-400, #94A3B8)', marginTop: '2px' }}>
-                            PDF, PNG, JPG, XLSX or DOCX — max 10MB
-                          </div>
-                        </div>
-                        <input
-                          type="file"
-                          accept=".pdf,.png,.jpg,.jpeg,.xlsx,.docx"
-                          style={{ display: 'none' }}
-                          onChange={(e) => {
-                            const file = e.target.files[0];
-                            if (file) {
-                              const sizeMB = file.size / (1024 * 1024);
-                              if (sizeMB > 10) {
-                                handleFileChange({ target: { name: 'specFile', value: null, error: `File must be under 10MB (yours: ${sizeMB.toFixed(1)}MB)` } });
-                              } else {
-                                handleFileChange({ target: { name: 'specFile', value: file } });
-                              }
-                            }
-                            e.target.value = '';
-                          }}
-                        />
-                      </label>
-                    ) : (
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '20px',
+                    padding: '14px 20px',
+                    background: formData.specRequired ? 'var(--cm-success-light, #F0FDF4)' : 'var(--cm-gray-50, #F8FAFC)',
+                    border: `1.5px solid ${formData.specRequired ? 'var(--cm-success, #10B981)' : 'var(--cm-gray-200, #E2E8F0)'}`,
+                    borderRadius: '10px',
+                    transition: 'all 0.2s ease',
+                  }}>
+                    {/* Checkbox + Label */}
+                    <div
+                      style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', flexShrink: 0, minWidth: '220px' }}
+                      onClick={() => handleChange({ target: { name: 'specRequired', checked: !formData.specRequired, type: 'checkbox' } })}
+                    >
                       <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: '10px 16px',
-                        border: '2px solid var(--cm-success, #10B981)',
-                        borderRadius: '8px',
-                        background: 'var(--cm-success-light, #F0FDF4)',
+                        width: '20px', height: '20px', borderRadius: '5px',
+                        border: `2px solid ${formData.specRequired ? 'var(--cm-success, #10B981)' : 'var(--cm-gray-300, #CBD5E1)'}`,
+                        background: formData.specRequired ? 'var(--cm-success, #10B981)' : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'all 0.2s ease', flexShrink: 0,
                       }}>
-                        <div style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '8px',
-                          background: 'white',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                        }}>
-                          <FileText size={18} style={{ color: 'var(--cm-success, #10B981)' }} />
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{
-                            fontSize: '13px',
-                            fontWeight: 600,
-                            color: 'var(--cm-gray-700, #334155)',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}>
-                            {formData.specFile.name}
-                          </div>
-                          <div style={{ fontSize: '11px', color: 'var(--cm-gray-400, #94A3B8)', marginTop: '2px' }}>
-                            {(formData.specFile.size / (1024 * 1024)).toFixed(2)} MB
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleFileChange({ target: { name: 'specFile', value: null } })}
-                          style={{
-                            width: '30px',
-                            height: '30px',
-                            border: 'none',
-                            borderRadius: '6px',
-                            background: 'var(--cm-danger-light, #FEF2F2)',
-                            color: 'var(--cm-danger, #EF4444)',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.2s ease',
-                            flexShrink: 0,
-                          }}
-                          onMouseOver={(e) => { e.currentTarget.style.background = 'var(--cm-danger, #EF4444)'; e.currentTarget.style.color = 'white'; }}
-                          onMouseOut={(e) => { e.currentTarget.style.background = 'var(--cm-danger-light, #FEF2F2)'; e.currentTarget.style.color = 'var(--cm-danger, #EF4444)'; }}
-                          title="Remove file"
-                        >
-                          <X size={14} />
-                        </button>
+                        {formData.specRequired && <Check size={12} color="white" strokeWidth={3} />}
                       </div>
-                    )}
-                    {errors.specFile && (
-                      <span style={{ fontSize: '12px', color: 'var(--cm-danger, #EF4444)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px' }}>
-                        <AlertCircle size={12} /> {errors.specFile}
-                      </span>
-                    )}
+                      <FileText size={18} style={{ color: formData.specRequired ? 'var(--cm-success, #10B981)' : 'var(--cm-gray-400, #94A3B8)', flexShrink: 0 }} />
+                      <div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--cm-gray-800, #1E293B)', lineHeight: 1.3 }}>Specification Document</div>
+                        <div style={{ fontSize: '11px', color: 'var(--cm-gray-400, #94A3B8)' }}>Detailed specification required</div>
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div style={{ width: '1px', height: '36px', background: 'var(--cm-gray-200, #E2E8F0)', flexShrink: 0 }} />
+
+                    {/* Upload */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {!formData.specFile ? (
+                        <label style={{
+                          display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px',
+                          border: '1.5px dashed var(--cm-gray-300, #CBD5E1)', borderRadius: '8px',
+                          cursor: 'pointer', transition: 'all 0.2s ease', background: 'white',
+                        }}
+                        onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--cm-primary, #003366)'; e.currentTarget.style.background = 'var(--cm-primary-light, #EEF2FF)'; }}
+                        onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--cm-gray-300, #CBD5E1)'; e.currentTarget.style.background = 'white'; }}
+                        >
+                          <div style={{ width: '32px', height: '32px', borderRadius: '7px', background: 'var(--cm-primary-light, #EEF2FF)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <FileUp size={16} style={{ color: 'var(--cm-primary, #003366)' }} />
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--cm-gray-700, #334155)' }}>Upload Specification Document</div>
+                            <div style={{ fontSize: '10px', color: 'var(--cm-gray-400, #94A3B8)', marginTop: '1px' }}>PDF, PNG, JPG, XLSX or DOCX — max 10MB</div>
+                          </div>
+                          <input type="file" accept=".pdf,.png,.jpg,.jpeg,.xlsx,.docx" style={{ display: 'none' }}
+                            onChange={(e) => {
+                              const file = e.target.files[0];
+                              if (file) {
+                                const sizeMB = file.size / (1024 * 1024);
+                                if (sizeMB > 10) { handleFileChange({ target: { name: 'specFile', value: null, error: `File must be under 10MB (yours: ${sizeMB.toFixed(1)}MB)` } }); }
+                                else { handleFileChange({ target: { name: 'specFile', value: file } }); }
+                              }
+                              e.target.value = '';
+                            }}
+                          />
+                        </label>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', border: '1.5px solid var(--cm-success, #10B981)', borderRadius: '8px', background: 'white' }}>
+                          <FileText size={16} style={{ color: 'var(--cm-success, #10B981)', flexShrink: 0 }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--cm-gray-700, #334155)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{formData.specFile.name}</div>
+                            <div style={{ fontSize: '10px', color: 'var(--cm-gray-400, #94A3B8)' }}>{(formData.specFile.size / (1024 * 1024)).toFixed(2)} MB</div>
+                          </div>
+                          <button type="button" onClick={() => handleFileChange({ target: { name: 'specFile', value: null } })}
+                            style={{ width: '26px', height: '26px', border: 'none', borderRadius: '5px', background: 'var(--cm-danger-light, #FEF2F2)', color: 'var(--cm-danger, #EF4444)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                            title="Remove file">
+                            <X size={13} />
+                          </button>
+                        </div>
+                      )}
+                      {errors.specFile && (
+                        <span style={{ fontSize: '11px', color: 'var(--cm-danger, #EF4444)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                          <AlertCircle size={11} /> {errors.specFile}
+                        </span>
+                      )}
+                    </div>
                   </div>
+
+                  {/* ── Row 2: Drawing Number ── */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '20px',
+                    padding: '14px 20px',
+                    background: formData.drawingNo ? 'rgba(0, 51, 102, 0.03)' : 'var(--cm-gray-50, #F8FAFC)',
+                    border: `1.5px solid ${formData.drawingNo ? 'var(--cm-primary, #003366)' : 'var(--cm-gray-200, #E2E8F0)'}`,
+                    borderRadius: '10px',
+                    transition: 'all 0.2s ease',
+                  }}>
+                    {/* Drawing Number Input */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, minWidth: '220px' }}>
+                      <Ruler size={18} style={{ color: formData.drawingNo ? 'var(--cm-primary, #003366)' : 'var(--cm-gray-400, #94A3B8)', flexShrink: 0 }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--cm-gray-500, #64748B)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Drawing Number</div>
+                        <input
+                          type="text"
+                          name="drawingNo"
+                          value={formData.drawingNo}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          placeholder="e.g., DWG-001-R3"
+                          style={{
+                            width: '100%', padding: '7px 12px', fontSize: '13px', fontFamily: 'inherit',
+                            color: 'var(--cm-gray-800, #1E293B)', background: 'white',
+                            border: '1.5px solid var(--cm-gray-200, #E2E8F0)', borderRadius: '6px',
+                            outline: 'none', transition: 'all 0.2s ease',
+                          }}
+                          onFocus={(e) => { e.target.style.borderColor = 'var(--cm-primary, #003366)'; e.target.style.boxShadow = '0 0 0 3px rgba(0,51,102,0.08)'; }}
+                          onBlurCapture={(e) => { e.target.style.borderColor = 'var(--cm-gray-200, #E2E8F0)'; e.target.style.boxShadow = 'none'; }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div style={{ width: '1px', height: '36px', background: 'var(--cm-gray-200, #E2E8F0)', flexShrink: 0 }} />
+
+                    {/* Drawing Upload */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {!formData.drawingAttachment ? (
+                        <label style={{
+                          display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px',
+                          border: '1.5px dashed var(--cm-gray-300, #CBD5E1)', borderRadius: '8px',
+                          cursor: 'pointer', transition: 'all 0.2s ease', background: 'white',
+                        }}
+                        onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--cm-primary, #003366)'; e.currentTarget.style.background = 'var(--cm-primary-light, #EEF2FF)'; }}
+                        onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--cm-gray-300, #CBD5E1)'; e.currentTarget.style.background = 'white'; }}
+                        >
+                          <div style={{ width: '32px', height: '32px', borderRadius: '7px', background: 'var(--cm-primary-light, #EEF2FF)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <FileUp size={16} style={{ color: 'var(--cm-primary, #003366)' }} />
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--cm-gray-700, #334155)' }}>Upload Drawing Attachment</div>
+                            <div style={{ fontSize: '10px', color: 'var(--cm-gray-400, #94A3B8)', marginTop: '1px' }}>PDF, PNG, JPG or DWG — max 10MB</div>
+                          </div>
+                          <input type="file" accept=".pdf,.png,.jpg,.jpeg,.dwg" style={{ display: 'none' }}
+                            onChange={(e) => {
+                              const file = e.target.files[0];
+                              if (file) {
+                                const sizeMB = file.size / (1024 * 1024);
+                                if (sizeMB > 10) { handleFileChange({ target: { name: 'drawingAttachment', value: null, error: `File must be under 10MB (yours: ${sizeMB.toFixed(1)}MB)` } }); }
+                                else { handleFileChange({ target: { name: 'drawingAttachment', value: file } }); }
+                              }
+                              e.target.value = '';
+                            }}
+                          />
+                        </label>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', border: '1.5px solid var(--cm-success, #10B981)', borderRadius: '8px', background: 'white' }}>
+                          <Paperclip size={16} style={{ color: 'var(--cm-success, #10B981)', flexShrink: 0 }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--cm-gray-700, #334155)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{formData.drawingAttachment.name}</div>
+                            <div style={{ fontSize: '10px', color: 'var(--cm-gray-400, #94A3B8)' }}>{(formData.drawingAttachment.size / (1024 * 1024)).toFixed(2)} MB</div>
+                          </div>
+                          <button type="button" onClick={() => handleFileChange({ target: { name: 'drawingAttachment', value: null } })}
+                            style={{ width: '26px', height: '26px', border: 'none', borderRadius: '5px', background: 'var(--cm-danger-light, #FEF2F2)', color: 'var(--cm-danger, #EF4444)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                            title="Remove file">
+                            <X size={13} />
+                          </button>
+                        </div>
+                      )}
+                      {errors.drawingAttachment && (
+                        <span style={{ fontSize: '11px', color: 'var(--cm-danger, #EF4444)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                          <AlertCircle size={11} /> {errors.drawingAttachment}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
                 </div>
               </FormSection>
 
