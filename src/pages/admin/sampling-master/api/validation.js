@@ -1,5 +1,8 @@
-const VALIDATION_RULES = {
+// ─── Sampling Master Validation ──────────────────────────────────────────────
+// src/pages/admin/sampling-master/api/validation.js
 
+const VALIDATION_RULES = {
+  // Sampling Plan fields
   samplePlanNo: {
     required: true,
     minLength: 2,
@@ -27,23 +30,13 @@ const VALIDATION_RULES = {
     max: 999999,
   },
 
-
+  // Quality Plan fields
   qcPlanNo: {
     required: true,
     minLength: 2,
     maxLength: 30,
     pattern: /^[A-Za-z0-9\-_.]+$/,
     patternMessage: 'Only letters, numbers, hyphens, underscores, and dots allowed',
-  },
-  company: {
-    required: true,
-    minLength: 2,
-    maxLength: 200,
-  },
-  location: {
-    required: true,
-    minLength: 2,
-    maxLength: 200,
   },
   productId: {
     required: true,
@@ -66,17 +59,17 @@ export const validateField = (fieldName, value, formData = {}) => {
   const rules = VALIDATION_RULES[fieldName];
   if (!rules) return null;
 
-
+  // Required check
   if (rules.required && (value === undefined || value === null || value === '')) {
     return 'This field is required';
   }
 
-
+  // Not required and empty → OK
   if (!rules.required && (value === undefined || value === null || value === '')) {
     return null;
   }
 
-
+  // String checks
   if (typeof value === 'string') {
     if (rules.minLength && value.length < rules.minLength) {
       return `Minimum ${rules.minLength} characters required`;
@@ -89,7 +82,7 @@ export const validateField = (fieldName, value, formData = {}) => {
     }
   }
 
-
+  // Number checks
   if (typeof value === 'number' || rules.min !== undefined || rules.max !== undefined) {
     const numValue = Number(value);
     if (isNaN(numValue)) {
@@ -103,12 +96,12 @@ export const validateField = (fieldName, value, formData = {}) => {
     }
   }
 
-
+  // Enum checks
   if (rules.validValues && !rules.validValues.includes(value)) {
     return 'Please select a valid option';
   }
 
-
+  // Cross-field checks
   if (fieldName === 'lotMax' && formData.lotMin) {
     if (Number(value) < Number(formData.lotMin)) {
       return 'Max must be greater than or equal to Min';
@@ -122,14 +115,14 @@ export const validateField = (fieldName, value, formData = {}) => {
 export const validateSamplingPlanForm = (formData) => {
   const errors = {};
 
-
+  // Basic fields
   const basicFields = ['samplePlanNo', 'samplePlanType', 'iterations'];
   basicFields.forEach(field => {
     const error = validateField(field, formData[field], formData);
     if (error) errors[field] = error;
   });
 
-
+  // Lot ranges
   if (formData.lotRanges && formData.lotRanges.length > 0) {
     const lotRangeErrors = [];
     let hasRangeErrors = false;
@@ -137,12 +130,10 @@ export const validateSamplingPlanForm = (formData) => {
     formData.lotRanges.forEach((range, index) => {
       const rangeErrors = {};
 
-
       if (!range.lotMin || range.lotMin < 1) {
         rangeErrors.lotMin = 'Lot Min is required';
         hasRangeErrors = true;
       }
-
 
       if (!range.lotMax || range.lotMax < 1) {
         rangeErrors.lotMax = 'Lot Max is required';
@@ -151,7 +142,6 @@ export const validateSamplingPlanForm = (formData) => {
         rangeErrors.lotMax = 'Max must be >= Min';
         hasRangeErrors = true;
       }
-
 
       if (range.iteration1 !== undefined && range.iteration1 !== '' && range.iteration1 !== null) {
         if (Number(range.iteration1) < 1) {
@@ -164,14 +154,12 @@ export const validateSamplingPlanForm = (formData) => {
         }
       }
 
-
       if (range.passRequired1 !== undefined && range.iteration1 !== undefined) {
         if (Number(range.passRequired1) > Number(range.iteration1)) {
           rangeErrors.passRequired1 = 'Cannot exceed sample qty';
           hasRangeErrors = true;
         }
       }
-
 
       if (range.acceptNumber !== undefined && range.rejectNumber !== undefined) {
         if (Number(range.acceptNumber) < 0) {
@@ -191,7 +179,7 @@ export const validateSamplingPlanForm = (formData) => {
       lotRangeErrors.push(rangeErrors);
     });
 
-
+    // Check for overlapping ranges
     const sortedRanges = [...formData.lotRanges].sort((a, b) => Number(a.lotMin) - Number(b.lotMin));
     for (let i = 1; i < sortedRanges.length; i++) {
       if (Number(sortedRanges[i].lotMin) <= Number(sortedRanges[i - 1].lotMax)) {
@@ -217,7 +205,7 @@ export const validateSamplingPlanForm = (formData) => {
 export const validateQualityPlanForm = (formData) => {
   const errors = {};
 
-  const fields = ['qcPlanNo', 'company', 'location', 'productId', 'documentRevNo', 'revisionDate', 'departmentId'];
+  const fields = ['qcPlanNo', 'productId', 'documentRevNo', 'revisionDate', 'departmentId'];
   fields.forEach(field => {
     const error = validateField(field, formData[field], formData);
     if (error) errors[field] = error;
@@ -267,8 +255,6 @@ export const getInitialSamplingPlanState = () => ({
 export const getInitialQualityPlanState = () => ({
   qcPlanNo: '',
   planName: '',
-  company: '',
-  location: '',
   productId: '',
   documentRevNo: '',
   revisionDate: new Date().toISOString().split('T')[0],
@@ -281,7 +267,36 @@ export const getInitialQualityPlanState = () => ({
   requiresFunctional: false,
   documentNumber: '',
   status: 'draft',
-  stages:[],
+  // ── Stages with default first stage ──
+  stages: [
+    {
+      _key: `stage-init-${Date.now()}`,
+      stageName: '',
+      stageType: 'visual',
+      stageSequence: 1,
+      inspectionType: 'sampling',
+      samplingPlanId: '',
+      isMandatory: true,
+      requiresInstrument: false,
+      parameters: [
+        {
+          _key: `param-init-${Date.now()}`,
+          parameterName: '',
+          parameterSequence: 1,
+          checkingType: 'visual',
+          specification: '',
+          nominalValue: '',
+          toleranceMin: '',
+          toleranceMax: '',
+          unitId: '',
+          instrumentId: '',
+          inputType: 'pass_fail',
+          isMandatory: true,
+          acceptanceCriteria: '',
+        },
+      ],
+    },
+  ],
 });
 
 

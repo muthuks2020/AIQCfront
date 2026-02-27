@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { colors, shadows, borderRadius, transitions } from '../../constants/theme';
 import { validateReading } from '../../api/inspectionService';
+import TestCertificateUpload from './TestCertificateUpload';
 
 
 const StatusBadge = ({ status, count }) => {
@@ -120,6 +121,7 @@ const VisualCheckCard = ({
   sampleSize,
   readings,
   onUpdateVisualCheck,
+  inspectionId,
 }) => {
   const checkpointReadings = readings?.readings || {};
   const result = readings?.result || 'Pending';
@@ -177,7 +179,7 @@ const VisualCheckCard = ({
       ...styles.visualCard,
       borderLeft: `4px solid ${counts.ng > 0 ? colors.danger : counts.ok === sampleSize ? colors.success : colors.neutral[300]}`,
     }}>
-      {}
+      {/* Card Top */}
       <div style={styles.visualCardTop}>
         <div style={styles.visualCardLeft}>
           <div style={styles.visualCardHeader}>
@@ -188,7 +190,7 @@ const VisualCheckCard = ({
           <span style={styles.visualCardSpec}>{checkpoint.specification}</span>
         </div>
 
-        {}
+        {/* Counters */}
         <div style={styles.counterRow}>
           <div style={{ ...styles.counterBadge, background: colors.successBg, color: colors.success }}>
             <CheckCircle size={12} />
@@ -205,7 +207,7 @@ const VisualCheckCard = ({
           </div>
         </div>
 
-        {}
+        {/* Result */}
         <div style={{
           ...styles.visualResultBadge,
           background: resultStyle.bg,
@@ -216,7 +218,7 @@ const VisualCheckCard = ({
         </div>
       </div>
 
-      {}
+      {/* Card Bottom */}
       {isQtyCheck ? (
         <div style={styles.qtyCheckRow}>
           <div style={styles.qtyCheckBadge}>
@@ -231,7 +233,7 @@ const VisualCheckCard = ({
         </div>
       ) : (
         <>
-          {}
+          {/* Progress bar */}
           <div style={styles.progressBarContainer}>
             <div style={styles.progressBarTrack}>
               <div style={{
@@ -245,7 +247,7 @@ const VisualCheckCard = ({
             <span style={styles.progressText}>{completedPercent}%</span>
           </div>
 
-          {}
+          {/* Bulk actions */}
           <div style={styles.bulkActions}>
             <button type="button" onClick={() => handleMarkAll('OK')} style={styles.bulkBtnOK}>
               <CheckCircle size={14} /> All OK
@@ -259,7 +261,7 @@ const VisualCheckCard = ({
             <span style={styles.bulkHint}>Click individual chips to toggle</span>
           </div>
 
-          {}
+          {/* Chip grid */}
           <div style={styles.chipGrid}>
             {[...Array(sampleSize)].map((_, i) => {
               const sampleNumber = i + 1;
@@ -276,6 +278,14 @@ const VisualCheckCard = ({
           </div>
         </>
       )}
+
+      {/* ─── Test Certificate Upload ─── */}
+      <TestCertificateUpload
+        inspectionId={inspectionId}
+        checkpointId={checkpoint.id}
+        checkpointType="visual"
+        checkpointName={checkpoint.name}
+      />
     </div>
   );
 };
@@ -426,6 +436,7 @@ const InspectionMatrix = ({
   stats,
   onUpdateReading,
   onUpdateVisualCheck,
+  inspectionId,
 }) => {
   const [selectedCheckpoint, setSelectedCheckpoint] = useState(null);
 
@@ -439,7 +450,7 @@ const InspectionMatrix = ({
 
   return (
     <div style={styles.container}>
-      {}
+      {/* Header */}
       <div style={styles.header}>
         <h2 style={styles.title}>Inspection Matrix</h2>
         <div style={styles.statsRow}>
@@ -451,7 +462,7 @@ const InspectionMatrix = ({
         </div>
       </div>
 
-      {}
+      {/* Functional / Measurement Checks */}
       {hasFunctional && (
         <div style={styles.sectionWrapper}>
           <div style={styles.sectionHeader}>
@@ -473,14 +484,25 @@ const InspectionMatrix = ({
               </thead>
               <tbody>
                 {functionalChecks.map((checkpoint) => (
-                  <FunctionalCheckpointRow
-                    key={checkpoint.id}
-                    checkpoint={checkpoint}
-                    sampleSize={sampleSize}
-                    readings={readings[checkpoint.id]}
-                    onUpdateReading={onUpdateReading}
-                    onViewParameters={setSelectedCheckpoint}
-                  />
+                  <React.Fragment key={checkpoint.id}>
+                    <FunctionalCheckpointRow
+                      checkpoint={checkpoint}
+                      sampleSize={sampleSize}
+                      readings={readings[checkpoint.id]}
+                      onUpdateReading={onUpdateReading}
+                      onViewParameters={setSelectedCheckpoint}
+                    />
+                    <tr>
+                      <td colSpan={sampleSize + 3} style={{ padding: 0, border: 'none' }}>
+                        <TestCertificateUpload
+                          inspectionId={inspectionId}
+                          checkpointId={checkpoint.id}
+                          checkpointType="functional"
+                          checkpointName={checkpoint.name}
+                        />
+                      </td>
+                    </tr>
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -488,7 +510,7 @@ const InspectionMatrix = ({
         </div>
       )}
 
-      {}
+      {/* Visual Checks */}
       {hasVisual && (
         <div style={styles.sectionWrapper}>
           <div style={styles.sectionHeader}>
@@ -504,13 +526,14 @@ const InspectionMatrix = ({
                 sampleSize={sampleSize}
                 readings={readings[checkpoint.id]}
                 onUpdateVisualCheck={onUpdateVisualCheck}
+                inspectionId={inspectionId}
               />
             ))}
           </div>
         </div>
       )}
 
-      {}
+      {/* QC Parameters Modal */}
       {selectedCheckpoint && (
         <QCParametersModal
           checkpoint={selectedCheckpoint}

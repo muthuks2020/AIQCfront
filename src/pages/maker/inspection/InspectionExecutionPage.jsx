@@ -282,6 +282,7 @@ const InspectionExecutionPage = () => {
             stats={stats}
             onUpdateReading={updateReading}
             onUpdateVisualCheck={updateVisualCheck}
+            inspectionId={inspectionId}
           />
 
           {/* Remarks Section */}

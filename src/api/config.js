@@ -22,8 +22,11 @@ export const ENDPOINTS = {
     submitResult: '/inspection/results',                                  // POST — submit result ← FIXED (was /inspection/${id}/submit)
     saveDraft:  (id) => `/inspection/results/${id}/save-draft`,           // POST — save draft    ← FIXED
     readings:   (inspectionId) => `/inspection/${inspectionId}/readings`, // GET  — readings
+    // ─── Test Certificate endpoints ──────────────────────────────────────
+    testCertificates:  (id) => `/inspection/${id}/test-certificates`,                   // POST (upload) / GET (list)
+    testCertDownload:  (certId) => `/inspection/test-certificates/${certId}/download`,   // GET  — download file
+    testCertDelete:    (certId) => `/inspection/test-certificates/${certId}`,             // DELETE
   },
-
   // ---------------------------------------------------------------------------
   // Checker — Validation & Review
   // ---------------------------------------------------------------------------
@@ -73,15 +76,7 @@ export const ENDPOINTS = {
   },
 };
 
-// ---------------------------------------------------------------------------
-// Auth Headers
-// ---------------------------------------------------------------------------
-// ✅ FIX #4: Include X-User-Id, X-User-Name, X-User-Role, X-User-Email
-//    The backend auth_middleware requires these headers:
-//      - Authorization: Bearer <token>        → authenticates the request
-//      - X-User-Id                            → required or 401
-//      - X-User-Name, X-User-Role, X-User-Email → used for audit/authorization
-// ---------------------------------------------------------------------------
+
 export const getHeaders = () => {
   // Try to read user info from the same localStorage key AuthContext uses
   let user = {};

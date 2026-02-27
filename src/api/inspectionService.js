@@ -388,6 +388,75 @@ export const calculateCheckpointResult = (readings, checkpoint) => {
   return hasFailure ? 'Rejected' : 'Accepted';
 };
 
+// ---------------------------------------------------------------------------
+// API: Upload test certificate for a checkpoint
+// ---------------------------------------------------------------------------
+export const uploadTestCertificate = async (inspectionId, file, checkpointId, checkpointType, checkpointName = '') => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('checkpoint_id', String(checkpointId));
+  formData.append('checkpoint_type', checkpointType);
+  formData.append('checkpoint_name', checkpointName);
+
+  const url = `${API_CONFIG.baseUrl}${ENDPOINTS.inspection.testCertificates(inspectionId)}`;
+
+  // Build auth headers (without Content-Type — browser sets multipart boundary)
+  let user = {};
+  try {
+    const savedAuth = localStorage.getItem('appasamy_qc_auth');
+    if (savedAuth) {
+      const parsed = JSON.parse(savedAuth);
+      user = parsed.user || {};
+    }
+  } catch (e) { /* ignore */ }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('authToken') || 'local-dev-token-2026'}`,
+      'X-User-Id':    String(user.id || user.userId || '1'),
+      'X-User-Name':  user.name || 'Admin User',
+      'X-User-Role':  user.role || 'maker',
+      'X-User-Email': user.email || '',
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(errorBody.message || `Upload failed: ${response.status}`);
+  }
+
+  return await response.json();
+};
+
+
+// ---------------------------------------------------------------------------
+// API: List test certificates for an inspection
+// ---------------------------------------------------------------------------
+export const getTestCertificates = async (inspectionId) => {
+  return apiFetch(ENDPOINTS.inspection.testCertificates(inspectionId));
+};
+
+
+// ---------------------------------------------------------------------------
+// API: Delete a test certificate
+// ---------------------------------------------------------------------------
+export const deleteTestCertificate = async (certId) => {
+  return apiFetch(ENDPOINTS.inspection.testCertDelete(certId), {
+    method: 'DELETE',
+  });
+};
+
+
+// ---------------------------------------------------------------------------
+// Helper: Get the download URL for a test certificate
+// ---------------------------------------------------------------------------
+export const getTestCertDownloadUrl = (certId) => {
+  return `${API_CONFIG.baseUrl}${ENDPOINTS.inspection.testCertDownload(certId)}`;
+};
+
+
 export default {
   getInspectionQueue,
   getInspectionById,
@@ -399,4 +468,8 @@ export default {
   generateInspectionReport,
   validateReading,
   calculateCheckpointResult,
+  uploadTestCertificate,
+  getTestCertificates,
+  deleteTestCertificate,
+  getTestCertDownloadUrl,
 };

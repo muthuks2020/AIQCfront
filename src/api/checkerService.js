@@ -1,22 +1,7 @@
-/**
- * =============================================================================
- * Checker API Service
- * =============================================================================
- * Centralized API service for all Checker / Validation operations.
- * Follows the same architectural pattern as inspectionService.js so that
- * toggling USE_MOCK_API in src/api/config.js switches the entire Checker
- * flow from mock data to real backend calls — zero component changes needed.
- *
- * Usage in components / hooks:
- *   import { getCheckerInspections, approveInspection } from '../../api/checkerService';
- * =============================================================================
- */
+
 
 import { USE_MOCK_API, API_CONFIG, ENDPOINTS, getHeaders } from './config';
 
-// =============================================================================
-// Core API Fetch Utility (shared pattern with inspectionService.js)
-// =============================================================================
 
 const apiFetch = async (endpoint, options = {}) => {
   const url = `${API_CONFIG.baseUrl}${endpoint}`;

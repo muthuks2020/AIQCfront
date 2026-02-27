@@ -334,8 +334,8 @@ const NotFoundPage = () => {
 
 /**
  * Main App Component
- * Wraps everything with BrowserRouter and AuthProvider
- * basename="/qc" ensures all routes are prefixed with /qc to match Vite's base config
+ * basename="/qc" tells React Router all routes live under /qc/
+ * This means /login → /qc/login, /admin → /qc/admin, /admin/sampling-master → /qc/admin/sampling-master, etc.
  */
 const App = () => {
   return (
