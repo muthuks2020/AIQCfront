@@ -105,11 +105,8 @@ const SamplingPlanMasterPage = () => {
         const loadedData = { ...response.data };
 
         // ── Defensive: ensure samplePlanType is uppercase SP1/SP2/SP3 ──
-        // The transformer should already do this, but guard against
-        // older deployed API code that may not have normalizePlanType
         if (loadedData.samplePlanType) {
           const upper = String(loadedData.samplePlanType).toUpperCase();
-          // Map any legacy values that slipped through
           const legacyMap = {
             'AQL_BASED': 'SP1', 'NORMAL': 'SP1', 'FIXED': 'SP0',
             'TIGHTENED': 'SP2', 'REDUCED': 'SP2', 'CUSTOM': 'SP1',
@@ -121,6 +118,31 @@ const SamplingPlanMasterPage = () => {
 
         // ── Defensive: ensure iterations is a number (1, 2, or 3) ──
         loadedData.iterations = Number(loadedData.iterations) || 1;
+
+        // ── FIX: Re-derive iteration2 / passRequired values from iteration1
+        //    so they always match what the API returns on reload.
+        //    The backend only stores sample_size (= iteration1); iteration2
+        //    and pass values are always computed, so we must keep them in sync.
+        if (loadedData.lotRanges && Array.isArray(loadedData.lotRanges)) {
+          loadedData.lotRanges = loadedData.lotRanges.map(range => {
+            const iter1 = Number(range.iteration1) || 0;
+            const iter3 = Number(range.lotMax) || 0;
+            let iter2;
+            if (loadedData.samplePlanType === 'SP3') {
+              iter2 = iter1;
+            } else {
+              iter2 = iter1 * 2;
+            }
+            return {
+              ...range,
+              iteration2:     iter2,
+              iteration3:     iter3,
+              passRequired1:  calculateRequiredPass(iter1, 1),
+              passRequired2:  calculateRequiredPass(iter2, 2),
+              passRequired3:  calculateRequiredPass(iter3, 3),
+            };
+          });
+        }
 
         console.log('[EDIT-DEBUG] Normalized formData:', {
           samplePlanType: loadedData.samplePlanType,
@@ -213,9 +235,9 @@ const SamplingPlanMasterPage = () => {
           const lotSize = range.lotMax;
           return {
             ...range,
-            iteration1: lotSize,
-            iteration2: lotSize,
-            iteration3: lotSize,
+            iteration1:    lotSize,
+            iteration2:    lotSize,
+            iteration3:    lotSize,
             passRequired1: calculateRequiredPass(lotSize, 1),
             passRequired2: calculateRequiredPass(lotSize, 2),
             passRequired3: calculateRequiredPass(lotSize, 3),
@@ -224,14 +246,15 @@ const SamplingPlanMasterPage = () => {
 
         const avgLot = Math.floor((range.lotMin + range.lotMax) / 2);
         const iter1 = calculateSampleQuantity(avgLot, planType, 1);
-        const iter2 = calculateSampleQuantity(avgLot, planType, 2);
+        // FIX: iteration2 is always iter1 * 2 (consistent with what API returns on reload)
+        const iter2 = iter1 * 2;
         const iter3 = range.lotMax;
 
         return {
           ...range,
-          iteration1: iter1,
-          iteration2: iter2,
-          iteration3: iter3,
+          iteration1:    iter1,
+          iteration2:    iter2,
+          iteration3:    iter3,
           passRequired1: calculateRequiredPass(iter1, 1),
           passRequired2: calculateRequiredPass(iter2, 2),
           passRequired3: calculateRequiredPass(iter3, 3),
@@ -246,44 +269,60 @@ const SamplingPlanMasterPage = () => {
       const newRanges = [...prev.lotRanges];
       newRanges[index] = { ...newRanges[index], [field]: Number(value) || 0 };
 
-
       if (field === 'lotMin' || field === 'lotMax') {
         const range = newRanges[index];
 
-
         if (prev.samplePlanType === 'SP3') {
           const lotSize = range.lotMax;
-          newRanges[index].iteration1 = lotSize;
-          newRanges[index].iteration2 = lotSize;
-          newRanges[index].iteration3 = lotSize;
+          newRanges[index].iteration1    = lotSize;
+          newRanges[index].iteration2    = lotSize;
+          newRanges[index].iteration3    = lotSize;
           newRanges[index].passRequired1 = calculateRequiredPass(lotSize, 1);
           newRanges[index].passRequired2 = calculateRequiredPass(lotSize, 2);
           newRanges[index].passRequired3 = calculateRequiredPass(lotSize, 3);
         } else {
           const avgLot = Math.floor((range.lotMin + range.lotMax) / 2);
-          const iter1 = calculateSampleQuantity(avgLot, prev.samplePlanType, 1);
-          const iter2 = calculateSampleQuantity(avgLot, prev.samplePlanType, 2);
-          const iter3 = range.lotMax;
+          const iter1  = calculateSampleQuantity(avgLot, prev.samplePlanType, 1);
+          // FIX: iteration2 = iter1 * 2 (matches what API returns on reload)
+          const iter2  = iter1 * 2;
+          const iter3  = range.lotMax;
 
-          newRanges[index].iteration1 = iter1;
-          newRanges[index].iteration2 = iter2;
-          newRanges[index].iteration3 = iter3;
+          newRanges[index].iteration1    = iter1;
+          newRanges[index].iteration2    = iter2;
+          newRanges[index].iteration3    = iter3;
           newRanges[index].passRequired1 = calculateRequiredPass(iter1, 1);
           newRanges[index].passRequired2 = calculateRequiredPass(iter2, 2);
           newRanges[index].passRequired3 = calculateRequiredPass(iter3, 3);
         }
       }
+
+      // FIX: when user manually edits iteration1, cascade to derived fields
+      if (field === 'iteration1') {
+        const iter1 = Number(value) || 0;
+        const iter3 = newRanges[index].lotMax || 0;
+        let iter2;
+        if (prev.samplePlanType === 'SP3') {
+          iter2 = iter1;
+        } else {
+          iter2 = iter1 * 2;
+        }
+        newRanges[index].iteration2    = iter2;
+        newRanges[index].iteration3    = iter3;
+        newRanges[index].passRequired1 = calculateRequiredPass(iter1, 1);
+        newRanges[index].passRequired2 = calculateRequiredPass(iter2, 2);
+        newRanges[index].passRequired3 = calculateRequiredPass(iter3, 3);
+      }
+
       return { ...prev, lotRanges: newRanges };
     });
   };
 
- const addLotRange = () => {
+  const addLotRange = () => {
     const lastRange = formData.lotRanges[formData.lotRanges.length - 1];
     const newMin = (lastRange?.lotMax || 0) + 1;
     const newMax = newMin + 100;
 
     let iter1, iter2, iter3;
-
 
     if (formData.samplePlanType === 'SP3') {
       iter1 = newMax;
@@ -291,7 +330,8 @@ const SamplingPlanMasterPage = () => {
       iter3 = newMax;
     } else {
       iter1 = calculateSampleQuantity(Math.floor((newMin + newMax) / 2), formData.samplePlanType, 1);
-      iter2 = calculateSampleQuantity(Math.floor((newMin + newMax) / 2), formData.samplePlanType, 2);
+      // FIX: iteration2 = iter1 * 2 (consistent with API reload)
+      iter2 = iter1 * 2;
       iter3 = newMax;
     }
 
@@ -300,12 +340,12 @@ const SamplingPlanMasterPage = () => {
       lotRanges: [
         ...prev.lotRanges,
         {
-          id: Date.now(),
-          lotMin: newMin,
-          lotMax: newMax,
-          iteration1: iter1,
-          iteration2: iter2,
-          iteration3: iter3,
+          id:            Date.now(),
+          lotMin:        newMin,
+          lotMax:        newMax,
+          iteration1:    iter1,
+          iteration2:    iter2,
+          iteration3:    iter3,
           passRequired1: calculateRequiredPass(iter1, 1),
           passRequired2: calculateRequiredPass(iter2, 2),
           passRequired3: calculateRequiredPass(iter3, 3),
@@ -396,7 +436,7 @@ const SamplingPlanMasterPage = () => {
   return (
     <div className="sm-page">
       <div className="sm-content">
-        {}
+        {/* Page Header */}
         <div className="sm-page-header">
           <div className="sm-page-header-left">
             <button
@@ -434,10 +474,10 @@ const SamplingPlanMasterPage = () => {
           </div>
         </div>
 
-        {}
+        {/* Form */}
         <form onSubmit={handleSubmit}>
           <div className="sm-form-container">
-            {}
+            {/* Form Header */}
             <div className="sm-form-header">
               <div className="sm-form-header-content">
                 <div className="sm-form-header-left">
@@ -468,9 +508,9 @@ const SamplingPlanMasterPage = () => {
               </div>
             </div>
 
-            {}
+            {/* Form Body */}
             <div className="sm-form-body">
-              {}
+              {/* Step 1: Basic Information */}
               <FormSection
                 icon={Hash}
                 title="Basic Information"
@@ -494,7 +534,7 @@ const SamplingPlanMasterPage = () => {
                 </div>
               </FormSection>
 
-              {}
+              {/* Step 2: Sampling Plan Type */}
               <FormSection
                 icon={Layers}
                 title="Sampling Plan Type"
@@ -518,7 +558,7 @@ const SamplingPlanMasterPage = () => {
                 </div>
               </FormSection>
 
-              {}
+              {/* Step 3: Lot Range Configuration */}
               <FormSection
                 icon={Settings}
                 title="Lot Range Configuration"
@@ -558,6 +598,7 @@ const SamplingPlanMasterPage = () => {
                     <tbody>
                       {formData.lotRanges.map((range, index) => (
                         <tr key={range.id || index}>
+                          {/* Lot Range min–max */}
                           <td>
                             <div className="sm-lot-range-range">
                               <input
@@ -579,6 +620,8 @@ const SamplingPlanMasterPage = () => {
                               />
                             </div>
                           </td>
+
+                          {/* Iter 1 Sample — EDITABLE (this is the only value saved to backend) */}
                           <td>
                             <input
                               type="number"
@@ -588,62 +631,75 @@ const SamplingPlanMasterPage = () => {
                               min={1}
                             />
                           </td>
+
+                          {/* Iter 1 Pass — READ-ONLY: auto = ceil(iter1 * 0.98)
+                              Displayed consistently with what API recalculates on reload */}
                           <td>
                             <input
                               type="number"
-                              className="sm-lot-range-input"
+                              className="sm-lot-range-input sm-disabled"
                               value={range.passRequired1}
-                              onChange={(e) => handleLotRangeChange(index, 'passRequired1', e.target.value)}
-                              min={1}
-                              max={range.iteration1}
+                              readOnly
+                              title="Auto-calculated: 98% of Iter 1 Sample"
                             />
                           </td>
+
+                          {/* Iter 2 columns — only shown when iterations >= 2 */}
                           {formData.iterations >= 2 && (
                             <>
+                              {/* Iter 2 Sample — READ-ONLY: auto = iter1 * 2
+                                  Matches exactly what samplingPlanFromApi computes on reload */}
                               <td>
                                 <input
                                   type="number"
-                                  className="sm-lot-range-input"
+                                  className="sm-lot-range-input sm-disabled"
                                   value={range.iteration2}
-                                  onChange={(e) => handleLotRangeChange(index, 'iteration2', e.target.value)}
-                                  min={1}
+                                  readOnly
+                                  title="Auto-calculated: 2× Iter 1 Sample"
                                 />
                               </td>
+
+                              {/* Iter 2 Pass — READ-ONLY: auto = ceil(iter2 * 0.95) */}
                               <td>
                                 <input
                                   type="number"
-                                  className="sm-lot-range-input"
+                                  className="sm-lot-range-input sm-disabled"
                                   value={range.passRequired2}
-                                  onChange={(e) => handleLotRangeChange(index, 'passRequired2', e.target.value)}
-                                  min={1}
-                                  max={range.iteration2}
+                                  readOnly
+                                  title="Auto-calculated: 95% of Iter 2 Sample"
                                 />
                               </td>
                             </>
                           )}
+
+                          {/* Iter 3 columns — only shown when iterations >= 3 */}
                           {formData.iterations >= 3 && (
                             <>
+                              {/* Iter 3 Sample — READ-ONLY: = lotMax (100% inspection) */}
                               <td>
                                 <input
                                   type="number"
-                                  className={`sm-lot-range-input sm-disabled`}
+                                  className="sm-lot-range-input sm-disabled"
                                   value={range.iteration3}
                                   readOnly
-                                  title="100% inspection"
+                                  title="100% inspection — equals Lot Max"
                                 />
                               </td>
+
+                              {/* Iter 3 Pass — READ-ONLY: auto = ceil(iter3 * 0.95) */}
                               <td>
                                 <input
                                   type="number"
-                                  className="sm-lot-range-input"
+                                  className="sm-lot-range-input sm-disabled"
                                   value={range.passRequired3}
-                                  onChange={(e) => handleLotRangeChange(index, 'passRequired3', e.target.value)}
-                                  min={1}
-                                  max={range.iteration3}
+                                  readOnly
+                                  title="Auto-calculated: 95% of Iter 3 Sample"
                                 />
                               </td>
                             </>
                           )}
+
+                          {/* Delete row */}
                           <td>
                             <button
                               type="button"
@@ -668,7 +724,7 @@ const SamplingPlanMasterPage = () => {
               </FormSection>
             </div>
 
-            {}
+            {/* Form Footer */}
             <div className="sm-form-footer">
               <div className="sm-form-footer-left">
                 <FormButton
@@ -702,7 +758,7 @@ const SamplingPlanMasterPage = () => {
           </div>
         </form>
 
-        {}
+        {/* Success Modal */}
         <SuccessModal
           show={showSuccess}
           title={isEditing ? 'Plan Updated!' : 'Plan Created!'}

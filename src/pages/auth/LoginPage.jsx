@@ -116,14 +116,14 @@ const LoginPage = ({ onLoginSuccess }) => {
 
             {}
             <h1 style={styles.brandTitle}>
-              Lorem ipsum
-              <span style={styles.brandSubtitle}>Lorem ipsum</span>
+              Quality Control
+              <span style={styles.brandSubtitle}>APPASAMY</span>
             </h1>
 
             {}
             <p style={styles.brandDescription}>
-              Lorem ipsum Lorem ipsum Lorem ipsum Lorem ipsum Lorem ipsum Lorem ipsum
-              Lorem ipsum Lorem ipsum Lorem ipsum Lorem ipsum Lorem ipsum
+             Streamlined quality assurance for B-SCAN products with real-time
+             Odoo ERP integration. Zero manual intervention, 100% compliance guaranteed.
             </p>
 
             {}

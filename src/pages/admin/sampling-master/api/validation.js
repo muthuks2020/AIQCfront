@@ -1,8 +1,6 @@
-// ─── Sampling Master Validation ──────────────────────────────────────────────
 // src/pages/admin/sampling-master/api/validation.js
 
 const VALIDATION_RULES = {
-  // Sampling Plan fields
   samplePlanNo: {
     required: true,
     minLength: 2,
@@ -29,8 +27,6 @@ const VALIDATION_RULES = {
     min: 1,
     max: 999999,
   },
-
-  // Quality Plan fields
   qcPlanNo: {
     required: true,
     minLength: 2,
@@ -38,26 +34,12 @@ const VALIDATION_RULES = {
     pattern: /^[A-Za-z0-9\-_.]+$/,
     patternMessage: 'Only letters, numbers, hyphens, underscores, and dots allowed',
   },
-  productId: {
-    required: true,
-  },
-  documentRevNo: {
-    required: true,
-    minLength: 1,
-    maxLength: 20,
-  },
-  revisionDate: {
-    required: true,
-  },
-  departmentId: {
-    required: true,
-  },
-  company: {                                                    // ← NEW
-    required: true,
-  },
-  location: {                                                   // ← NEW
-    required: true,
-  },
+  productId:    { required: true },
+  documentRevNo: { required: true, minLength: 1, maxLength: 20 },
+  revisionDate:  { required: true },
+  departmentId:  { required: true },
+  company:       { required: true },
+  location:      { required: true },
 };
 
 
@@ -65,55 +47,27 @@ export const validateField = (fieldName, value, formData = {}) => {
   const rules = VALIDATION_RULES[fieldName];
   if (!rules) return null;
 
-  // Required check
   if (rules.required && (value === undefined || value === null || value === '')) {
     return 'This field is required';
   }
-
-  // Not required and empty → OK
   if (!rules.required && (value === undefined || value === null || value === '')) {
     return null;
   }
-
-  // String checks
   if (typeof value === 'string') {
-    if (rules.minLength && value.length < rules.minLength) {
-      return `Minimum ${rules.minLength} characters required`;
-    }
-    if (rules.maxLength && value.length > rules.maxLength) {
-      return `Maximum ${rules.maxLength} characters allowed`;
-    }
-    if (rules.pattern && !rules.pattern.test(value)) {
-      return rules.patternMessage || 'Invalid format';
-    }
+    if (rules.minLength && value.length < rules.minLength) return `Minimum ${rules.minLength} characters required`;
+    if (rules.maxLength && value.length > rules.maxLength) return `Maximum ${rules.maxLength} characters allowed`;
+    if (rules.pattern && !rules.pattern.test(value)) return rules.patternMessage || 'Invalid format';
   }
-
-  // Number checks
   if (typeof value === 'number' || rules.min !== undefined || rules.max !== undefined) {
-    const numValue = Number(value);
-    if (isNaN(numValue)) {
-      return 'Must be a valid number';
-    }
-    if (rules.min !== undefined && numValue < rules.min) {
-      return `Minimum value is ${rules.min}`;
-    }
-    if (rules.max !== undefined && numValue > rules.max) {
-      return `Maximum value is ${rules.max}`;
-    }
+    const n = Number(value);
+    if (isNaN(n)) return 'Must be a valid number';
+    if (rules.min !== undefined && n < rules.min) return `Minimum value is ${rules.min}`;
+    if (rules.max !== undefined && n > rules.max) return `Maximum value is ${rules.max}`;
   }
-
-  // Enum checks
-  if (rules.validValues && !rules.validValues.includes(value)) {
-    return 'Please select a valid option';
-  }
-
-  // Cross-field checks
+  if (rules.validValues && !rules.validValues.includes(value)) return 'Please select a valid option';
   if (fieldName === 'lotMax' && formData.lotMin) {
-    if (Number(value) < Number(formData.lotMin)) {
-      return 'Max must be greater than or equal to Min';
-    }
+    if (Number(value) < Number(formData.lotMin)) return 'Max must be greater than or equal to Min';
   }
-
   return null;
 };
 
@@ -121,53 +75,31 @@ export const validateField = (fieldName, value, formData = {}) => {
 export const validateSamplingPlanForm = (formData) => {
   const errors = {};
 
-  // Top-level fields
-  const fields = ['samplePlanNo', 'samplePlanType', 'iterations'];
-  fields.forEach(field => {
+  // Top-level fields only
+  ['samplePlanNo', 'samplePlanType', 'iterations'].forEach(field => {
     const error = validateField(field, formData[field], formData);
     if (error) errors[field] = error;
   });
 
-  // Lot ranges
+  // Lot ranges — only validate lotMin, lotMax, and iteration1 (sample size)
   if (formData.lotRanges && formData.lotRanges.length > 0) {
     const lotRangeErrors = [];
     let hasRangeErrors = false;
 
-    formData.lotRanges.forEach((range, index) => {
+    formData.lotRanges.forEach((range) => {
       const rangeErrors = {};
 
-      // Lot min/max validation
       const lotMinError = validateField('lotMin', range.lotMin, formData);
       if (lotMinError) { rangeErrors.lotMin = lotMinError; hasRangeErrors = true; }
 
       const lotMaxError = validateField('lotMax', range.lotMax, { lotMin: range.lotMin });
       if (lotMaxError) { rangeErrors.lotMax = lotMaxError; hasRangeErrors = true; }
 
-      // Sample size validation
-      if (range.iteration1 !== undefined) {
-        const sampleSize = Number(range.iteration1);
-        const lotMax = Number(range.lotMax);
-        if (isNaN(sampleSize) || sampleSize < 1) {
+      // iteration1 must be >= 1 if filled in
+      if (range.iteration1 !== '' && range.iteration1 !== undefined && range.iteration1 !== null) {
+        const n = Number(range.iteration1);
+        if (isNaN(n) || n < 1) {
           rangeErrors.iteration1 = 'Sample size must be >= 1';
-          hasRangeErrors = true;
-        } else if (lotMax && sampleSize > lotMax) {
-          rangeErrors.iteration1 = 'Sample size cannot exceed lot max';
-          hasRangeErrors = true;
-        }
-      }
-
-      // Accept/Reject validation
-      if (range.acceptNumber !== undefined && range.rejectNumber !== undefined) {
-        if (Number(range.acceptNumber) < 0) {
-          rangeErrors.acceptNumber = 'Accept number must be >= 0';
-          hasRangeErrors = true;
-        }
-        if (Number(range.rejectNumber) < 1) {
-          rangeErrors.rejectNumber = 'Reject number must be >= 1';
-          hasRangeErrors = true;
-        }
-        if (Number(range.acceptNumber) >= Number(range.rejectNumber)) {
-          rangeErrors.rejectNumber = 'Reject must be > Accept';
           hasRangeErrors = true;
         }
       }
@@ -175,11 +107,11 @@ export const validateSamplingPlanForm = (formData) => {
       lotRangeErrors.push(rangeErrors);
     });
 
-    // Check for overlapping ranges
-    const sortedRanges = [...formData.lotRanges].sort((a, b) => Number(a.lotMin) - Number(b.lotMin));
-    for (let i = 1; i < sortedRanges.length; i++) {
-      if (Number(sortedRanges[i].lotMin) <= Number(sortedRanges[i - 1].lotMax)) {
-        const origIdx = formData.lotRanges.indexOf(sortedRanges[i]);
+    // Overlapping range check
+    const sorted = [...formData.lotRanges].sort((a, b) => Number(a.lotMin) - Number(b.lotMin));
+    for (let i = 1; i < sorted.length; i++) {
+      if (Number(sorted[i].lotMin) <= Number(sorted[i - 1].lotMax)) {
+        const origIdx = formData.lotRanges.indexOf(sorted[i]);
         if (origIdx >= 0) {
           lotRangeErrors[origIdx].lotMin = 'Overlaps with previous range';
           hasRangeErrors = true;
@@ -187,9 +119,7 @@ export const validateSamplingPlanForm = (formData) => {
       }
     }
 
-    if (hasRangeErrors) {
-      errors.lotRanges = lotRangeErrors;
-    }
+    if (hasRangeErrors) errors.lotRanges = lotRangeErrors;
   } else {
     errors.lotRanges = 'At least one lot range is required';
   }
@@ -200,14 +130,10 @@ export const validateSamplingPlanForm = (formData) => {
 
 export const validateQualityPlanForm = (formData) => {
   const errors = {};
-
-  // ── UPDATED: added 'company' and 'location' ──
-  const fields = ['qcPlanNo', 'productId', 'documentRevNo', 'revisionDate', 'departmentId', 'company', 'location'];
-  fields.forEach(field => {
+  ['qcPlanNo', 'productId', 'documentRevNo', 'revisionDate', 'departmentId', 'company', 'location'].forEach(field => {
     const error = validateField(field, formData[field], formData);
     if (error) errors[field] = error;
   });
-
   return errors;
 };
 
@@ -216,81 +142,81 @@ export const hasErrors = (errors) => {
   if (!errors) return false;
   return Object.keys(errors).some(key => {
     const value = errors[key];
-    if (Array.isArray(value)) {
-      return value.some(item => item && Object.keys(item).length > 0);
-    }
+    if (Array.isArray(value)) return value.some(item => item && Object.keys(item).length > 0);
     return value !== null && value !== undefined && value !== '';
   });
 };
 
 
+// ---------------------------------------------------------------------------
+// getInitialSamplingPlanState
+// All Sample Size Configuration fields are BLANK — user fills them in manually.
+// No defaults, no pre-calculated values.
+// ---------------------------------------------------------------------------
 export const getInitialSamplingPlanState = () => ({
-  samplePlanNo: '',
-  samplePlanName: '',
-  samplePlanType: 'SP1',
-  aqlLevel: '1.0',
+  samplePlanNo:    '',
+  samplePlanName:  '',
+  samplePlanType:  'SP1',
+  aqlLevel:        '1.0',
   inspectionLevel: 'II',
-  iterations: 1,
+  iterations:      1,
   lotRanges: [
     {
-      id: Date.now(),
-      lotMin: 2,
-      lotMax: 50,
-      iteration1: 8,
-      iteration2: 16,
-      iteration3: 50,
-      passRequired1: 7,
-      passRequired2: 15,
-      passRequired3: 48,
-      acceptNumber: 0,
-      rejectNumber: 1,
+      id:            Date.now(),
+      lotMin:        '',
+      lotMax:        '',
+      iteration1:    '',
+      passRequired1: '',
+      iteration2:    '',
+      passRequired2: '',
+      iteration3:    '',
+      passRequired3: '',
     },
   ],
 });
 
 
 export const getInitialQualityPlanState = () => ({
-  qcPlanNo: '',
-  planName: '',
-  productId: '',
-  documentRevNo: '',
-  revisionDate: new Date().toISOString().split('T')[0],
-  effectiveDate: '',
-  departmentId: '',
-  company: '',                                                  // ← NEW
-  location: '',                                                 // ← NEW
-  description: '',
-  planType: 'standard',
+  qcPlanNo:        '',
+  planName:        '',
+  productId:       '',
+  documentRevNo:   '',
+  revisionDate:    new Date().toISOString().split('T')[0],
+  effectiveDate:   '',
+  departmentId:    '',
+  company:         '',
+  location:        '',
+  description:     '',
+  planType:        'standard',
   inspectionStages: 1,
-  requiresVisual: true,
+  requiresVisual:   true,
   requiresFunctional: false,
-  documentNumber: '',
-  status: 'draft',
-  // ── Stages with default first stage ──
+  documentNumber:  '',
+  status:          'draft',
   stages: [
     {
-      _key: `stage-init-${Date.now()}`,
-      stageName: '',
-      stageType: 'visual',
-      stageSequence: 1,
-      inspectionType: 'sampling',
-      samplingPlanId: '',
-      isMandatory: true,
+      _key:               `stage-init-${Date.now()}`,
+      stageName:          '',
+      stageType:          'visual',
+      stageSequence:      1,
+      inspectionType:     'sampling',
+      samplingPlanId:     '',
+      isMandatory:        true,
       requiresInstrument: false,
       parameters: [
         {
-          _key: `param-init-${Date.now()}`,
-          parameterName: '',
-          parameterSequence: 1,
-          checkingType: 'visual',
-          specification: '',
-          nominalValue: '',
-          toleranceMin: '',
-          toleranceMax: '',
-          unitId: '',
-          instrumentId: '',
-          inputType: 'pass_fail',
-          isMandatory: true,
+          _key:               `param-init-${Date.now()}`,
+          parameterName:      '',
+          parameterSequence:  1,
+          checkingType:       'visual',
+          specification:      '',
+          nominalValue:       '',
+          toleranceMin:       '',
+          toleranceMax:       '',
+          unitId:             '',
+          instrumentId:       '',
+          inputType:          'pass_fail',
+          isMandatory:        true,
           acceptanceCriteria: '',
         },
       ],
