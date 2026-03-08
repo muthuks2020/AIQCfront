@@ -297,6 +297,7 @@ const SamplingPlanMasterPage = () => {
       }
 
       // FIX: when user manually edits iteration1, cascade to derived fields
+      // but do NOT override passRequired1 — user sets that independently
       if (field === 'iteration1') {
         const iter1 = Number(value) || 0;
         const iter3 = newRanges[index].lotMax || 0;
@@ -308,9 +309,15 @@ const SamplingPlanMasterPage = () => {
         }
         newRanges[index].iteration2    = iter2;
         newRanges[index].iteration3    = iter3;
+        // Only auto-recalculate passRequired1 when iter1 changes; user can still override it after
         newRanges[index].passRequired1 = calculateRequiredPass(iter1, 1);
         newRanges[index].passRequired2 = calculateRequiredPass(iter2, 2);
         newRanges[index].passRequired3 = calculateRequiredPass(iter3, 3);
+      }
+
+      // Allow direct edits to passRequired1 (user overriding the auto-calculated value)
+      if (field === 'passRequired1') {
+        newRanges[index].passRequired1 = Number(value) || 0;
       }
 
       return { ...prev, lotRanges: newRanges };
@@ -632,15 +639,16 @@ const SamplingPlanMasterPage = () => {
                             />
                           </td>
 
-                          {/* Iter 1 Pass — READ-ONLY: auto = ceil(iter1 * 0.98)
-                              Displayed consistently with what API recalculates on reload */}
+                          {/* Iter 1 Pass — EDITABLE: user can set the required pass count */}
                           <td>
                             <input
                               type="number"
-                              className="sm-lot-range-input sm-disabled"
+                              className="sm-lot-range-input"
                               value={range.passRequired1}
-                              readOnly
-                              title="Auto-calculated: 98% of Iter 1 Sample"
+                              onChange={(e) => handleLotRangeChange(index, 'passRequired1', e.target.value)}
+                              min={1}
+                              max={range.iteration1}
+                              title="Required pass count for Iter 1"
                             />
                           </td>
 

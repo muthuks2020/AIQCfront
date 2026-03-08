@@ -177,19 +177,27 @@ const transformers = {
       createdAt:          apiData.created_at,
       updatedAt:          apiData.updated_at,
 
-      lotRanges: (apiData.details || []).map((d, idx) => ({
-        id:             d.id || idx,
-        lotMin:         d.lot_size_min,
-        lotMax:         d.lot_size_max,
-        iteration1:     d.sample_size,
-        iteration2:     d.sample_size * 2,
-        iteration3:     d.lot_size_max,
-        passRequired1:  calculateRequiredPass(d.sample_size, 1),
-        passRequired2:  calculateRequiredPass(d.sample_size * 2, 2),
-        passRequired3:  calculateRequiredPass(d.lot_size_max, 3),
-        acceptNumber:   d.accept_number,
-        rejectNumber:   d.reject_number,
-      })),
+      lotRanges: (apiData.details || []).map((d, idx) => {
+        const iter1 = d.sample_size;
+        const iter2 = d.iter2_sample_size != null ? d.iter2_sample_size : iter1 * 2;
+        const iter3 = d.iter3_sample_size != null ? d.iter3_sample_size : d.lot_size_max;
+        const pass1 = d.accept_number;
+        const pass2 = d.iter2_accept_number != null ? d.iter2_accept_number : calculateRequiredPass(iter2, 2);
+        const pass3 = d.iter3_accept_number != null ? d.iter3_accept_number : calculateRequiredPass(iter3, 3);
+        return {
+          id:             d.id || idx,
+          lotMin:         d.lot_size_min,
+          lotMax:         d.lot_size_max,
+          iteration1:     iter1,
+          iteration2:     iter2,
+          iteration3:     iter3,
+          passRequired1:  pass1,
+          passRequired2:  pass2,
+          passRequired3:  pass3,
+          acceptNumber:   d.accept_number,
+          rejectNumber:   d.reject_number,
+        };
+      }),
     };
   },
 
@@ -236,11 +244,16 @@ const transformers = {
         }
 
         return {
-          lot_size_min:   Number(range.lotMin),
-          lot_size_max:   Number(range.lotMax),
-          sample_size:    sampleSize,
-          accept_number:  acceptNumber,
-          reject_number:  rejectNumber,
+          lot_size_min:        Number(range.lotMin),
+          lot_size_max:        Number(range.lotMax),
+          sample_size:         sampleSize,
+          accept_number:       acceptNumber,
+          reject_number:       rejectNumber,
+          // Persist iter2 / iter3 so values survive a save → edit round-trip
+          iter2_sample_size:   Number(range.iteration2)    || null,
+          iter2_accept_number: Number(range.passRequired2) || null,
+          iter3_sample_size:   Number(range.iteration3)    || null,
+          iter3_accept_number: Number(range.passRequired3) || null,
         };
       }),
     };
