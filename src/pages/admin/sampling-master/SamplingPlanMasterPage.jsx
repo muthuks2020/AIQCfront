@@ -227,99 +227,15 @@ const SamplingPlanMasterPage = () => {
   };
 
   const recalculateSamples = (planType, iterations) => {
-    setFormData(prev => ({
-      ...prev,
-      lotRanges: prev.lotRanges.map(range => {
-
-        if (planType === 'SP3') {
-          const lotSize = range.lotMax;
-          return {
-            ...range,
-            iteration1:    lotSize,
-            iteration2:    lotSize,
-            iteration3:    lotSize,
-            passRequired1: calculateRequiredPass(lotSize, 1),
-            passRequired2: calculateRequiredPass(lotSize, 2),
-            passRequired3: calculateRequiredPass(lotSize, 3),
-          };
-        }
-
-        const avgLot = Math.floor((range.lotMin + range.lotMax) / 2);
-        const iter1 = calculateSampleQuantity(avgLot, planType, 1);
-        // FIX: iteration2 is always iter1 * 2 (consistent with what API returns on reload)
-        const iter2 = iter1 * 2;
-        const iter3 = range.lotMax;
-
-        return {
-          ...range,
-          iteration1:    iter1,
-          iteration2:    iter2,
-          iteration3:    iter3,
-          passRequired1: calculateRequiredPass(iter1, 1),
-          passRequired2: calculateRequiredPass(iter2, 2),
-          passRequired3: calculateRequiredPass(iter3, 3),
-        };
-      }),
-    }));
+    // No auto-calculation — user fills all sample size fields manually
   };
 
 
   const handleLotRangeChange = (index, field, value) => {
     setFormData(prev => {
       const newRanges = [...prev.lotRanges];
-      newRanges[index] = { ...newRanges[index], [field]: Number(value) || 0 };
-
-      if (field === 'lotMin' || field === 'lotMax') {
-        const range = newRanges[index];
-
-        if (prev.samplePlanType === 'SP3') {
-          const lotSize = range.lotMax;
-          newRanges[index].iteration1    = lotSize;
-          newRanges[index].iteration2    = lotSize;
-          newRanges[index].iteration3    = lotSize;
-          newRanges[index].passRequired1 = calculateRequiredPass(lotSize, 1);
-          newRanges[index].passRequired2 = calculateRequiredPass(lotSize, 2);
-          newRanges[index].passRequired3 = calculateRequiredPass(lotSize, 3);
-        } else {
-          const avgLot = Math.floor((range.lotMin + range.lotMax) / 2);
-          const iter1  = calculateSampleQuantity(avgLot, prev.samplePlanType, 1);
-          // FIX: iteration2 = iter1 * 2 (matches what API returns on reload)
-          const iter2  = iter1 * 2;
-          const iter3  = range.lotMax;
-
-          newRanges[index].iteration1    = iter1;
-          newRanges[index].iteration2    = iter2;
-          newRanges[index].iteration3    = iter3;
-          newRanges[index].passRequired1 = calculateRequiredPass(iter1, 1);
-          newRanges[index].passRequired2 = calculateRequiredPass(iter2, 2);
-          newRanges[index].passRequired3 = calculateRequiredPass(iter3, 3);
-        }
-      }
-
-      // FIX: when user manually edits iteration1, cascade to derived fields
-      // but do NOT override passRequired1 — user sets that independently
-      if (field === 'iteration1') {
-        const iter1 = Number(value) || 0;
-        const iter3 = newRanges[index].lotMax || 0;
-        let iter2;
-        if (prev.samplePlanType === 'SP3') {
-          iter2 = iter1;
-        } else {
-          iter2 = iter1 * 2;
-        }
-        newRanges[index].iteration2    = iter2;
-        newRanges[index].iteration3    = iter3;
-        // Only auto-recalculate passRequired1 when iter1 changes; user can still override it after
-        newRanges[index].passRequired1 = calculateRequiredPass(iter1, 1);
-        newRanges[index].passRequired2 = calculateRequiredPass(iter2, 2);
-        newRanges[index].passRequired3 = calculateRequiredPass(iter3, 3);
-      }
-
-      // Allow direct edits to passRequired1 (user overriding the auto-calculated value)
-      if (field === 'passRequired1') {
-        newRanges[index].passRequired1 = Number(value) || 0;
-      }
-
+      // Preserve empty string so user can clear a field; only convert non-empty to number
+      newRanges[index] = { ...newRanges[index], [field]: value === '' ? '' : Number(value) };
       return { ...prev, lotRanges: newRanges };
     });
   };
@@ -327,20 +243,6 @@ const SamplingPlanMasterPage = () => {
   const addLotRange = () => {
     const lastRange = formData.lotRanges[formData.lotRanges.length - 1];
     const newMin = (lastRange?.lotMax || 0) + 1;
-    const newMax = newMin + 100;
-
-    let iter1, iter2, iter3;
-
-    if (formData.samplePlanType === 'SP3') {
-      iter1 = newMax;
-      iter2 = newMax;
-      iter3 = newMax;
-    } else {
-      iter1 = calculateSampleQuantity(Math.floor((newMin + newMax) / 2), formData.samplePlanType, 1);
-      // FIX: iteration2 = iter1 * 2 (consistent with API reload)
-      iter2 = iter1 * 2;
-      iter3 = newMax;
-    }
 
     setFormData(prev => ({
       ...prev,
@@ -349,13 +251,13 @@ const SamplingPlanMasterPage = () => {
         {
           id:            Date.now(),
           lotMin:        newMin,
-          lotMax:        newMax,
-          iteration1:    iter1,
-          iteration2:    iter2,
-          iteration3:    iter3,
-          passRequired1: calculateRequiredPass(iter1, 1),
-          passRequired2: calculateRequiredPass(iter2, 2),
-          passRequired3: calculateRequiredPass(iter3, 3),
+          lotMax:        '',
+          iteration1:    '',
+          iteration2:    '',
+          iteration3:    '',
+          passRequired1: '',
+          passRequired2: '',
+          passRequired3: '',
         },
       ],
     }));
