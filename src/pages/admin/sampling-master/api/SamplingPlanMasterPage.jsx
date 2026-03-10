@@ -66,12 +66,6 @@ const PLAN_TYPE_OPTIONS = [
     icon: 'S2',
     description: 'Reduced inspection for proven quality',
   },
-  {
-    value: 'SP3',
-    label: 'Level 3',
-    icon: 'S3',
-    description: '100% Inspection - Full lot sampling',
-  },
 ];
 
 const SamplingPlanMasterPage = () => {
@@ -88,8 +82,6 @@ const SamplingPlanMasterPage = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [planNoValid, setPlanNoValid] = useState(false);
   const [planNoChecking, setPlanNoChecking] = useState(false);
-
-
   useEffect(() => {
     if (isEditing) {
       loadSamplingPlan();
@@ -119,29 +111,17 @@ const SamplingPlanMasterPage = () => {
         // ── Defensive: ensure iterations is a number (1, 2, or 3) ──
         loadedData.iterations = Number(loadedData.iterations) || 1;
 
-        // ── FIX: Re-derive iteration2 / passRequired values from iteration1
-        //    so they always match what the API returns on reload.
-        //    The backend only stores sample_size (= iteration1); iteration2
-        //    and pass values are always computed, so we must keep them in sync.
+        // ── Map API field names → frontend field names for iter2/iter3 ──
         if (loadedData.lotRanges && Array.isArray(loadedData.lotRanges)) {
-          loadedData.lotRanges = loadedData.lotRanges.map(range => {
-            const iter1 = Number(range.iteration1) || 0;
-            const iter3 = Number(range.lotMax) || 0;
-            let iter2;
-            if (loadedData.samplePlanType === 'SP3') {
-              iter2 = iter1;
-            } else {
-              iter2 = iter1 * 2;
-            }
-            return {
-              ...range,
-              iteration2:     iter2,
-              iteration3:     iter3,
-              passRequired1:  calculateRequiredPass(iter1, 1),
-              passRequired2:  calculateRequiredPass(iter2, 2),
-              passRequired3:  calculateRequiredPass(iter3, 3),
-            };
-          });
+          loadedData.lotRanges = loadedData.lotRanges.map(range => ({
+            ...range,
+            // API returns iter2_sample_size / iter2_accept_number etc.
+            // Frontend inputs use iteration2 / passRequired2 etc.
+            iteration2:    range.iteration2    ?? range.iter2_sample_size   ?? '',
+            passRequired2: range.passRequired2 ?? range.iter2_accept_number ?? '',
+            iteration3:    range.iteration3    ?? range.iter3_sample_size   ?? '',
+            passRequired3: range.passRequired3 ?? range.iter3_accept_number ?? '',
+          }));
         }
 
         console.log('[EDIT-DEBUG] Normalized formData:', {
@@ -657,6 +637,7 @@ const SamplingPlanMasterPage = () => {
         </form>
 
         {/* Success Modal */}
+
         <SuccessModal
           show={showSuccess}
           title={isEditing ? 'Plan Updated!' : 'Plan Created!'}
@@ -669,5 +650,6 @@ const SamplingPlanMasterPage = () => {
     </div>
   );
 };
+
 
 export default SamplingPlanMasterPage;

@@ -47,6 +47,8 @@ const ENDPOINTS = {
   categories:           `${SAMPLING_API_CONFIG.baseUrl}/categories`,
   companies:            `${SAMPLING_API_CONFIG.baseUrl}/lookups/companies`,
   cityLocations:        `${SAMPLING_API_CONFIG.baseUrl}/lookups/city-locations`,
+  lookupDepartments:    `${SAMPLING_API_CONFIG.baseUrl}/lookups/departments`,
+  lookupProducts:       `${SAMPLING_API_CONFIG.baseUrl}/lookups/products`,
 
   lookupSamplingPlans:  `${SAMPLING_API_CONFIG.baseUrl}/lookups/sampling-plans`,
   lookupQcPlans:        `${SAMPLING_API_CONFIG.baseUrl}/lookups/qc-plans`,
@@ -177,27 +179,17 @@ const transformers = {
       createdAt:          apiData.created_at,
       updatedAt:          apiData.updated_at,
 
-      lotRanges: (apiData.details || []).map((d, idx) => {
-        const iter1 = d.sample_size;
-        const iter2 = d.iter2_sample_size != null ? d.iter2_sample_size : iter1 * 2;
-        const iter3 = d.iter3_sample_size != null ? d.iter3_sample_size : d.lot_size_max;
-        const pass1 = d.accept_number;
-        const pass2 = d.iter2_accept_number != null ? d.iter2_accept_number : calculateRequiredPass(iter2, 2);
-        const pass3 = d.iter3_accept_number != null ? d.iter3_accept_number : calculateRequiredPass(iter3, 3);
-        return {
-          id:             d.id || idx,
-          lotMin:         d.lot_size_min,
-          lotMax:         d.lot_size_max,
-          iteration1:     iter1,
-          iteration2:     iter2,
-          iteration3:     iter3,
-          passRequired1:  pass1,
-          passRequired2:  pass2,
-          passRequired3:  pass3,
-          acceptNumber:   d.accept_number,
-          rejectNumber:   d.reject_number,
-        };
-      }),
+      lotRanges: (apiData.details || []).map((d, idx) => ({
+        id:            d.id || idx,
+        lotMin:        d.lot_size_min   ?? '',
+        lotMax:        d.lot_size_max   ?? '',
+        iteration1:    d.sample_size    ?? '',
+        passRequired1: d.accept_number  ?? '',
+        iteration2:    d.iter2_sample_size   != null ? d.iter2_sample_size   : '',
+        passRequired2: d.iter2_accept_number != null ? d.iter2_accept_number : '',
+        iteration3:    d.iter3_sample_size   != null ? d.iter3_sample_size   : '',
+        passRequired3: d.iter3_accept_number != null ? d.iter3_accept_number : '',
+      })),
     };
   },
 
@@ -222,26 +214,13 @@ const transformers = {
       details: (formData.lotRanges || []).map(range => {
         const sampleSize = Number(range.iteration1) || 1;
 
-        // Safe accept_number / reject_number computation
-        let rejectNumber = Number(range.rejectNumber);
-        if (isNaN(rejectNumber) || rejectNumber < 1) {
-          const passReq = Number(range.passRequired1);
-          if (!isNaN(passReq) && passReq > 0 && passReq < sampleSize) {
-            rejectNumber = sampleSize - passReq;
-          } else {
-            rejectNumber = 1;
-          }
-        }
+        // accept_number = what the user typed in Iter 1 Pass field
+        const acceptNumber = range.passRequired1 !== '' && range.passRequired1 != null
+          ? Number(range.passRequired1)
+          : 0;
 
-        let acceptNumber = Number(range.acceptNumber);
-        if (isNaN(acceptNumber) || acceptNumber < 0) {
-          acceptNumber = Math.max(0, sampleSize - rejectNumber);
-        }
-
-        // Ensure reject_number > accept_number (backend schema constraint)
-        if (rejectNumber <= acceptNumber) {
-          rejectNumber = acceptNumber + 1;
-        }
+        // reject_number is always acceptNumber + 1 (backend needs reject > accept)
+        const rejectNumber = acceptNumber + 1;
 
         return {
           lot_size_min:        Number(range.lotMin),
@@ -785,15 +764,18 @@ export const validateQCPlanNo = async (planNo, excludeId = null) => {
 // =============================================================================
 // Lookups
 // =============================================================================
-export const fetchDepartments = async () => {
-  logApiCall('GET', ENDPOINTS.departments);
+export const fetchDepartments = async (locationId = null) => {
+  const url = locationId
+    ? `${ENDPOINTS.lookupDepartments}?location_id=${locationId}`
+    : `${ENDPOINTS.lookupDepartments}`;
+  logApiCall('GET', url);
 
   if (SAMPLING_API_CONFIG.useMockData) {
     await delay(300);
     return { success: true, data: mockDepartments };
   }
 
-  const result = await apiFetch(`${ENDPOINTS.departments}?is_active=true`);
+  const result = await apiFetch(url);
   return {
     success: true,
     data: (result.data || []).map(transformers.departmentFromApi),
@@ -801,18 +783,25 @@ export const fetchDepartments = async () => {
 };
 
 
-export const fetchProducts = async () => {
-  logApiCall('GET', ENDPOINTS.categories);
+export const fetchProducts = async (departmentId = null) => {
+  const url = departmentId
+    ? `${ENDPOINTS.lookupProducts}?department_id=${departmentId}`
+    : `${ENDPOINTS.lookupProducts}`;
+  logApiCall('GET', url);
 
   if (SAMPLING_API_CONFIG.useMockData) {
     await delay(300);
     return { success: true, data: mockProducts };
   }
 
-  const result = await apiFetch(`${ENDPOINTS.categories}?is_active=true`);
+  const result = await apiFetch(url);
   return {
     success: true,
-    data: (result.data || []).map(transformers.productFromApi),
+    data: (result.data || []).map(p => ({
+      id: p.id,
+      code: p.category_code,
+      name: p.name || p.category_name,
+    })),
   };
 };
 
@@ -840,8 +829,11 @@ export const fetchCompanies = async () => {
 };
 
 
-export const fetchCityLocations = async () => {
-  logApiCall('GET', ENDPOINTS.cityLocations);
+export const fetchCityLocations = async (companyId = null) => {
+  const url = companyId
+    ? `${ENDPOINTS.cityLocations}?company_id=${companyId}`
+    : ENDPOINTS.cityLocations;
+  logApiCall('GET', url);
 
   if (SAMPLING_API_CONFIG.useMockData) {
     await delay(300);
@@ -854,13 +846,13 @@ export const fetchCityLocations = async () => {
     };
   }
 
-  const result = await apiFetch(ENDPOINTS.cityLocations);
+  const result = await apiFetch(url);
   return {
     success: true,
     data: (result.data || []).map(l => ({
       id: l.id,
       code: l.location_code,
-      name: l.city_name,
+      name: l.name || l.location_name,
     })),
   };
 };

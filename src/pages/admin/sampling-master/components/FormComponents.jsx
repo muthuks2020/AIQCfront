@@ -98,6 +98,7 @@ export const FormSelect = ({
   name,
   value,
   onChange,
+  onBlur,
   options = [],
   placeholder = 'Select an option',
   required = false,
@@ -105,6 +106,7 @@ export const FormSelect = ({
   error,
   loading = false,
   helper,
+  multiple = false,
 }) => {
   const selectClass = [
     'sm-select',
@@ -126,10 +128,12 @@ export const FormSelect = ({
           name={name}
           value={value}
           onChange={onChange}
+          onBlur={onBlur}
           disabled={disabled || loading}
+          multiple={multiple}
           className={selectClass}
         >
-          <option value="">{loading ? 'Loading...' : placeholder}</option>
+          {!multiple && <option value="">{loading ? 'Loading...' : placeholder}</option>}
           {options.map(opt => (
             <option key={opt.id} value={opt.id}>
               {opt.name}

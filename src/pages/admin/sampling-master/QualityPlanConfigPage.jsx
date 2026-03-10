@@ -81,6 +81,10 @@ const QualityPlanConfigPage = () => {
   const [planNoValid, setPlanNoValid] = useState(false);
   const [planNoChecking, setPlanNoChecking] = useState(false);
 
+  // ── Cascade IDs (used for filtered fetching only, not submitted to API) ──
+  const [selectedCompanyId, setSelectedCompanyId] = useState('');
+  const [selectedLocationId, setSelectedLocationId] = useState('');
+
 
   // ═══════════════════════════════════════════════════════════════
   // Load master data on mount
@@ -89,37 +93,13 @@ const QualityPlanConfigPage = () => {
   useEffect(() => { if (isEditing) loadQualityPlan(); }, [id]);
 
   const loadMasterData = async () => {
-    // Departments — existing qc_departments (5 rows)
-    setLoadingDepartments(true);
-    try {
-      const resp = await fetchDepartments();
-      if (resp.success) setDepartments(resp.data || []);
-    } catch (e) { console.error('Failed to load departments:', e); }
-    finally { setLoadingDepartments(false); }
-
-    // Products — existing qc_product_categories
-    setLoadingProducts(true);
-    try {
-      const resp = await fetchProducts();
-      if (resp.success) setProducts(resp.data || []);
-    } catch (e) { console.error('Failed to load products:', e); }
-    finally { setLoadingProducts(false); }
-
-    // Companies — new qc_companies table
+    // Only companies load on mount — locations/departments/products cascade from user selections
     setLoadingCompanies(true);
     try {
       const resp = await fetchCompanies();
       if (resp.success) setCompanies(resp.data || []);
     } catch (e) { console.error('Failed to load companies:', e); }
     finally { setLoadingCompanies(false); }
-
-    // City Locations — existing qc_locations filtered by location_type='city'
-    setLoadingCityLocations(true);
-    try {
-      const resp = await fetchCityLocations();
-      if (resp.success) setCityLocations(resp.data || []);
-    } catch (e) { console.error('Failed to load city locations:', e); }
-    finally { setLoadingCityLocations(false); }
   };
 
   const loadQualityPlan = async () => {
@@ -173,10 +153,6 @@ const QualityPlanConfigPage = () => {
       setErrors(prev => { const { [name]: removed, ...rest } = prev; return rest; });
     }
     if (name === 'qcPlanNo') { setPlanNoValid(false); validatePlanNo(value); }
-    if (name === 'departmentId') {
-      const dept = departments.find(d => d.id === value);
-      setSelectedDepartment(dept);
-    }
   };
 
   const handleBlur = (e) => {
@@ -184,18 +160,68 @@ const QualityPlanConfigPage = () => {
     setTouched(prev => ({ ...prev, [name]: true }));
   };
 
-  // Company and Location store the text NAME because
-  // qc_plans.company and qc_plans.location are VARCHAR(200) columns
-  const handleCompanyChange = (e) => {
-    const selectedName = e.target.value;
-    setFormData(prev => ({ ...prev, company: selectedName }));
+  // ── Company → fetch filtered locations, reset all downstream ──
+  const handleCompanyChange = async (e) => {
+    const companyId = e.target.value;
+    const selected = companies.find(c => String(c.id) === String(companyId));
+    setSelectedCompanyId(companyId);
+    setSelectedLocationId('');
+    setSelectedDepartment(null);
+    setCityLocations([]);
+    setDepartments([]);
+    setProducts([]);
+    setFormData(prev => ({ ...prev, company: selected?.name || '', location: '', departmentId: '', productId: [] }));
     if (errors.company) setErrors(prev => { const { company, ...rest } = prev; return rest; });
+    if (!companyId) return;
+    setLoadingCityLocations(true);
+    try {
+      const resp = await fetchCityLocations(companyId);
+      if (resp.success) setCityLocations(resp.data || []);
+    } catch (e) { console.error('Failed to load locations:', e); }
+    finally { setLoadingCityLocations(false); }
   };
 
-  const handleLocationChange = (e) => {
-    const selectedName = e.target.value;
-    setFormData(prev => ({ ...prev, location: selectedName }));
+  // ── Location → fetch filtered departments, reset downstream ──
+  const handleLocationChange = async (e) => {
+    const locationId = e.target.value;
+    const selected = cityLocations.find(l => String(l.id) === String(locationId));
+    setSelectedLocationId(locationId);
+    setSelectedDepartment(null);
+    setDepartments([]);
+    setProducts([]);
+    setFormData(prev => ({ ...prev, location: selected?.name || '', departmentId: '', productId: [] }));
     if (errors.location) setErrors(prev => { const { location, ...rest } = prev; return rest; });
+    if (!locationId) return;
+    setLoadingDepartments(true);
+    try {
+      const resp = await fetchDepartments(locationId);
+      if (resp.success) setDepartments(resp.data || []);
+    } catch (e) { console.error('Failed to load departments:', e); }
+    finally { setLoadingDepartments(false); }
+  };
+
+  // ── Department → fetch filtered products, reset product ──
+  const handleDepartmentChange = async (e) => {
+    const departmentId = e.target.value;
+    const dept = departments.find(d => String(d.id) === String(departmentId));
+    setSelectedDepartment(dept || null);
+    setProducts([]);
+    setFormData(prev => ({ ...prev, departmentId, productId: [] }));
+    if (errors.departmentId) setErrors(prev => { const { departmentId: _, ...rest } = prev; return rest; });
+    if (!departmentId) return;
+    setLoadingProducts(true);
+    try {
+      const resp = await fetchProducts(departmentId);
+      if (resp.success) setProducts(resp.data || []);
+    } catch (e) { console.error('Failed to load products:', e); }
+    finally { setLoadingProducts(false); }
+  };
+
+  // ── Product multi-select ──
+  const handleProductChange = (e) => {
+    const selectedIds = Array.from(e.target.selectedOptions, opt => opt.value);
+    setFormData(prev => ({ ...prev, productId: selectedIds }));
+    if (errors.productId) setErrors(prev => { const { productId: _, ...rest } = prev; return rest; });
   };
 
 
@@ -355,22 +381,12 @@ const QualityPlanConfigPage = () => {
                   />
                 </div>
                 <div className="sm-form-grid sm-form-grid-2" style={{ marginTop: '12px' }}>
-                  {/* ── Product Name (uses qc_product_categories via category_id) ── */}
-                  <FormSelect
-                    label="Product Name" name="productId"
-                    value={formData.productId}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    options={products.map(p => ({ id: p.id, name: p.name }))}
-                    placeholder="Select product name"
-                    required loading={loadingProducts}
-                    error={touched.productId && errors.productId}
-                  />
                   <FormInput
                     label="Document / Revision No" name="documentRevNo" value={formData.documentRevNo}
                     onChange={handleChange} onBlur={handleBlur} placeholder="e.g., Rev-03"
                     error={touched.documentRevNo && errors.documentRevNo} icon={Link2}
                   />
+                  <div />
                 </div>
                 <div className="sm-form-grid sm-form-grid-2" style={{ marginTop: '12px' }}>
                   <FormInput
@@ -394,47 +410,56 @@ const QualityPlanConfigPage = () => {
                 <div className="sm-form-grid sm-form-grid-2">
                   <FormSelect
                     label="Company" name="company"
-                    value={formData.company}
+                    value={selectedCompanyId}
                     onChange={handleCompanyChange}
                     onBlur={handleBlur}
-                    options={companies.map(c => ({ id: c.name, name: c.name }))}
+                    options={companies.map(c => ({ id: c.id, name: c.name }))}
                     placeholder="Select company"
                     required loading={loadingCompanies}
                     error={touched.company && errors.company}
                   />
                   <FormSelect
                     label="Location" name="location"
-                    value={formData.location}
+                    value={selectedLocationId}
                     onChange={handleLocationChange}
                     onBlur={handleBlur}
-                    options={cityLocations.map(l => ({ id: l.name, name: l.name }))}
-                    placeholder="Select location"
+                    options={cityLocations.map(l => ({ id: l.id, name: l.name }))}
+                    placeholder={selectedCompanyId ? 'Select location' : 'Select company first'}
                     required loading={loadingCityLocations}
                     error={touched.location && errors.location}
+                    disabled={!selectedCompanyId}
                   />
                 </div>
 
-                {/* Row 2: Department (full width) */}
+                {/* Row 2: Department + Product Name */}
                 <div className="sm-form-grid sm-form-grid-2" style={{ marginTop: '12px' }}>
                   <FormSelect
                     label="Department" name="departmentId"
                     value={formData.departmentId}
-                    onChange={handleChange}
+                    onChange={handleDepartmentChange}
                     onBlur={handleBlur}
-                    options={departments.map(d => ({ id: d.id, name: `${d.code} - ${d.name}` }))}
-                    placeholder="Select department"
+                    options={departments.map(d => ({ id: d.id, name: d.name }))}
+                    placeholder={selectedLocationId ? 'Select department' : 'Select location first'}
                     required loading={loadingDepartments}
                     error={touched.departmentId && errors.departmentId}
+                    disabled={!selectedLocationId}
                   />
-                  <div />
+                  {/* ── Product Name — multi-select ── */}
+                  <FormSelect
+                    label="Product Name" name="productId"
+                    value={formData.productId}
+                    onChange={handleProductChange}
+                    onBlur={handleBlur}
+                    options={products.map(p => ({ id: p.id, name: p.name }))}
+                    placeholder={formData.departmentId ? 'Select product' : 'Select department first'}
+                    required loading={loadingProducts}
+                    error={touched.productId && errors.productId}
+                    disabled={!formData.departmentId}
+                    multiple
+                  />
                 </div>
 
-                {/* Department Info panel */}
-                {selectedDepartment && (
-                  <div style={{ marginTop: '12px' }}>
-                    <DepartmentInfo department={selectedDepartment} />
-                  </div>
-                )}
+
               </FormSection>
 
 

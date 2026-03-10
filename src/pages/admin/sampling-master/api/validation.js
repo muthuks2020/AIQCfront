@@ -50,6 +50,10 @@ export const validateField = (fieldName, value, formData = {}) => {
   if (rules.required && (value === undefined || value === null || value === '')) {
     return 'This field is required';
   }
+  // ── Multi-select array check (e.g. productId) ──
+  if (rules.required && Array.isArray(value) && value.length === 0) {
+    return 'This field is required';
+  }
   if (!rules.required && (value === undefined || value === null || value === '')) {
     return null;
   }
@@ -81,48 +85,7 @@ export const validateSamplingPlanForm = (formData) => {
     if (error) errors[field] = error;
   });
 
-  // Lot ranges — only validate lotMin, lotMax, and iteration1 (sample size)
-  if (formData.lotRanges && formData.lotRanges.length > 0) {
-    const lotRangeErrors = [];
-    let hasRangeErrors = false;
-
-    formData.lotRanges.forEach((range) => {
-      const rangeErrors = {};
-
-      const lotMinError = validateField('lotMin', range.lotMin, formData);
-      if (lotMinError) { rangeErrors.lotMin = lotMinError; hasRangeErrors = true; }
-
-      const lotMaxError = validateField('lotMax', range.lotMax, { lotMin: range.lotMin });
-      if (lotMaxError) { rangeErrors.lotMax = lotMaxError; hasRangeErrors = true; }
-
-      // iteration1 must be >= 1 if filled in
-      if (range.iteration1 !== '' && range.iteration1 !== undefined && range.iteration1 !== null) {
-        const n = Number(range.iteration1);
-        if (isNaN(n) || n < 1) {
-          rangeErrors.iteration1 = 'Sample size must be >= 1';
-          hasRangeErrors = true;
-        }
-      }
-
-      lotRangeErrors.push(rangeErrors);
-    });
-
-    // Overlapping range check
-    const sorted = [...formData.lotRanges].sort((a, b) => Number(a.lotMin) - Number(b.lotMin));
-    for (let i = 1; i < sorted.length; i++) {
-      if (Number(sorted[i].lotMin) <= Number(sorted[i - 1].lotMax)) {
-        const origIdx = formData.lotRanges.indexOf(sorted[i]);
-        if (origIdx >= 0) {
-          lotRangeErrors[origIdx].lotMin = 'Overlaps with previous range';
-          hasRangeErrors = true;
-        }
-      }
-    }
-
-    if (hasRangeErrors) errors.lotRanges = lotRangeErrors;
-  } else {
-    errors.lotRanges = 'At least one lot range is required';
-  }
+  // Lot range rows — no validation, user enters freely
 
   return errors;
 };
@@ -179,7 +142,7 @@ export const getInitialSamplingPlanState = () => ({
 export const getInitialQualityPlanState = () => ({
   qcPlanNo:        '',
   planName:        '',
-  productId:       '',
+  productId:       [],
   documentRevNo:   '',
   revisionDate:    new Date().toISOString().split('T')[0],
   effectiveDate:   '',
