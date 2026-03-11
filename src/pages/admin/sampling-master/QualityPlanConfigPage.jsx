@@ -106,13 +106,48 @@ const QualityPlanConfigPage = () => {
     setIsLoading(true);
     try {
       const response = await fetchQualityPlanById(id);
-      if (response.success && response.data) {
-        const data = { ...response.data };
-        setFormData(data);
-        setPlanNoValid(true);
-        const dept = departments.find(d => d.id === data.departmentId);
-        setSelectedDepartment(dept);
-      }
+      if (!response.success || !response.data) return;
+      const data = { ...response.data };
+      setFormData(data);
+      setPlanNoValid(true);
+
+      // ── Walk the cascade chain to populate all dependent dropdowns ──
+
+      // Step 1: companies already loaded in loadMasterData
+      //         find the company whose name matches data.company
+      const companiesResp = await fetchCompanies();
+      const allCompanies = companiesResp.data || [];
+      setCompanies(allCompanies);
+      const matchedCompany = allCompanies.find(
+        c => c.name === data.company
+      );
+      if (!matchedCompany) return;
+      setSelectedCompanyId(String(matchedCompany.id));
+
+      // Step 2: fetch locations for that company
+      const locResp = await fetchCityLocations(matchedCompany.id);
+      const allLocations = locResp.data || [];
+      setCityLocations(allLocations);
+      const matchedLocation = allLocations.find(
+        l => l.name === data.location
+      );
+      if (!matchedLocation) return;
+      setSelectedLocationId(String(matchedLocation.id));
+
+      // Step 3: fetch departments for that location
+      const deptResp = await fetchDepartments(matchedLocation.id);
+      const allDepts = deptResp.data || [];
+      setDepartments(allDepts);
+      const matchedDept = allDepts.find(
+        d => String(d.id) === String(data.departmentId)
+      );
+      setSelectedDepartment(matchedDept || null);
+      if (!data.departmentId) return;
+
+      // Step 4: fetch products for that department
+      const prodResp = await fetchProducts(data.departmentId);
+      setProducts(prodResp.data || []);
+
     } catch (error) {
       console.error('Failed to load quality plan:', error);
       alert('Failed to load quality plan');
