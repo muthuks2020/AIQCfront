@@ -6,3 +6,4 @@ build/
 .DS_Store
 src -before maker-checker copy/
 *.zip
+vite.config.js

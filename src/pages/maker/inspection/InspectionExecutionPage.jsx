@@ -15,7 +15,6 @@ import { useInspection } from '../../../hooks/useInspection';
 import { BatchInfoPanel, InspectionMatrix } from '../../../components/inspection';
 import { formatDate } from '../../../utils/helpers';
 
-
 const LoadingSpinner = () => (
   <div style={styles.loadingContainer}>
     <Loader size={48} style={styles.spinner} />

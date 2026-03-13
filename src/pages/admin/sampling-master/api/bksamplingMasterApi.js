@@ -35,32 +35,6 @@ const getAuthHeaders = () => {
 };
 
 
-// ── Multipart headers for file uploads (no Content-Type — browser sets boundary) ──
-const getMultipartHeaders = () => {
-  const savedAuth = localStorage.getItem('appasamy_qc_auth');
-  let user = {};
-  let token = null;
-
-  if (savedAuth) {
-    try {
-      const parsed = JSON.parse(savedAuth);
-      user = parsed.user || {};
-    } catch (e) { /* ignore */ }
-  }
-
-  token = localStorage.getItem('authToken');
-
-  return {
-    'Accept': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` }),
-    'X-User-Id': String(user.id || user.userId || localStorage.getItem('userId') || '1'),
-    'X-User-Name': user.name || user.user_name || localStorage.getItem('userName') || 'Admin User',
-    'X-User-Role': user.role || localStorage.getItem('userRole') || 'admin',
-    'X-User-Email': user.email || localStorage.getItem('userEmail') || 'admin@appasamy.com',
-  };
-};
-
-
 const ENDPOINTS = {
   samplingPlans:        `${SAMPLING_API_CONFIG.baseUrl}/sampling-plans`,
   samplingPlanById:     (id) => `${SAMPLING_API_CONFIG.baseUrl}/sampling-plans/${id}`,
@@ -68,11 +42,6 @@ const ENDPOINTS = {
 
   qcPlans:              `${SAMPLING_API_CONFIG.baseUrl}/qc-plans`,
   qcPlanById:           (id) => `${SAMPLING_API_CONFIG.baseUrl}/qc-plans/${id}`,
-
-  // ── QC Plan document endpoints ──
-  qcPlanDocuments:         (planId)          => `${SAMPLING_API_CONFIG.baseUrl}/qc-plans/${planId}/documents`,
-  qcPlanDocumentDelete:    (planId, docId)   => `${SAMPLING_API_CONFIG.baseUrl}/qc-plans/${planId}/documents/${docId}`,
-  qcPlanDocumentCurrent:   (planId)          => `${SAMPLING_API_CONFIG.baseUrl}/qc-plans/${planId}/documents/current`,
 
   departments:          `${SAMPLING_API_CONFIG.baseUrl}/departments`,
   categories:           `${SAMPLING_API_CONFIG.baseUrl}/categories`,
@@ -291,18 +260,11 @@ const transformers = {
     createdAt:       apiData.created_at,
     updatedAt:       apiData.updated_at,
 
-    productId:       Array.isArray(apiData.category_ids) && apiData.category_ids.length
-                       ? apiData.category_ids.map(String)
-                       : apiData.category_id
-                         ? [String(apiData.category_id)]
-                         : [],
+    productId:       apiData.category_id || '',
     productName:     apiData.category?.category_name || apiData.category_name || '',
     departmentId:    apiData.department_id || '',
     departmentName:  apiData.department?.department_name || apiData.department_name || '',
     description:     apiData.description || '',
-
-    // ── Current uploaded document (null if none uploaded yet) ──
-    currentDocument: apiData.current_document || null,
 
     stages: (apiData.stages || []).map((s, sIdx) => ({
       id:               s.id,
@@ -341,14 +303,8 @@ const transformers = {
     company:          formData.company || null,
     location:         formData.location || null,
     department_id:    Number(formData.departmentId) || null,
-    // ── Multi-select products: send both category_ids (junction table) and
-    //    category_id (single FK kept for backward compat = first selection) ──
-    category_ids:     Array.isArray(formData.productId)
-                        ? formData.productId.map(Number).filter(Boolean)
-                        : formData.productId ? [Number(formData.productId)] : [],
-    category_id:      Array.isArray(formData.productId)
-                        ? (Number(formData.productId[0]) || null)
-                        : (Number(formData.productId) || null),
+    // ── FIX: send category_id (product) and description to backend ──
+    category_id:      Number(formData.productId) || null,
     description:      formData.description || null,
     revision:         formData.documentRevNo || '',
     revision_date:    formData.revisionDate || null,
@@ -442,13 +398,13 @@ let mockQualityPlans = [
     id: 'QP-001', qcPlanNo: 'RD.7.3-07', planName: 'B-SCAN Probe QC Plan',
     productId: '1', departmentId: '1', documentRevNo: 'Rev-03',
     revisionDate: '2026-01-15', description: 'QC plan for B-SCAN probe assembly',
-    status: 'active', createdAt: '2026-01-10T10:00:00Z', currentDocument: null,
+    status: 'active', createdAt: '2026-01-10T10:00:00Z',
   },
   {
     id: 'QP-002', qcPlanNo: 'RD.7.3-08', planName: 'Display Module QC Plan',
     productId: '2', departmentId: '2', documentRevNo: 'Rev-01',
     revisionDate: '2026-01-20', description: 'QC plan for display modules',
-    status: 'draft', createdAt: '2026-01-12T10:00:00Z', currentDocument: null,
+    status: 'draft', createdAt: '2026-01-12T10:00:00Z',
   },
 ];
 
@@ -487,6 +443,7 @@ export const calculateRequiredPass = (sampleQty, iteration = 1) => {
   const allowedDefectRate = iteration <= 1 ? 0.02 : 0.05;
   return Math.ceil(sampleQty * (1 - allowedDefectRate));
 };
+
 
 // =============================================================================
 // Sampling Plan CRUD
@@ -805,113 +762,6 @@ export const validateQCPlanNo = async (planNo, excludeId = null) => {
 
 
 // =============================================================================
-// NEW — Quality Plan Document (file upload) API functions
-// =============================================================================
-
-/**
- * Upload (or re-upload) a reference document for a Quality Plan.
- * The server preserves previous uploads as history (is_current=False).
- *
- * @param {number} planId  — ID of the existing QC Plan
- * @param {File}   file    — File object from the browser input
- * @returns {{ success: true, data: docObject }}
- */
-export const uploadQcPlanDocument = async (planId, file) => {
-  logApiCall('POST', ENDPOINTS.qcPlanDocuments(planId), { fileName: file.name, size: file.size });
-
-  if (SAMPLING_API_CONFIG.useMockData) {
-    await delay(600);
-    const mockDoc = {
-      id:            Date.now(),
-      qc_plan_id:    planId,
-      file_name:     `mock_${file.name}`,
-      original_name: file.name,
-      file_size:     file.size,
-      mime_type:     file.type,
-      is_current:    true,
-      uploaded_at:   new Date().toISOString(),
-      updated_at:    new Date().toISOString(),
-      uploaded_by:   'Admin User',
-    };
-    return { success: true, data: mockDoc };
-  }
-
-  const formData = new FormData();
-  formData.append('file', file);
-
-  const response = await fetch(ENDPOINTS.qcPlanDocuments(planId), {
-    method: 'POST',
-    headers: getMultipartHeaders(),
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    const message = errorBody.message || errorBody.error || `Upload failed: ${response.status}`;
-    const error = new Error(message);
-    error.status = response.status;
-    throw error;
-  }
-
-  const result = await response.json();
-  return {
-    success: true,
-    data: result.data
-      ? {
-          id:           result.data.id,
-          originalName: result.data.original_name,
-          fileSize:     result.data.file_size,
-          mimeType:     result.data.mime_type,
-          uploadedAt:   result.data.uploaded_at,
-          updatedAt:    result.data.updated_at,
-          uploadedBy:   result.data.uploaded_by,
-          downloadUrl:  result.data.download_url,
-        }
-      : null,
-  };
-};
-
-
-/**
- * Delete the specified document from a Quality Plan.
- * Physical file is removed from the server; history rows are untouched.
- *
- * @param {number} planId  — ID of the QC Plan
- * @param {number} docId   — ID of the QCPlanDocument row
- */
-export const deleteQcPlanDocument = async (planId, docId) => {
-  logApiCall('DELETE', ENDPOINTS.qcPlanDocumentDelete(planId, docId));
-
-  if (SAMPLING_API_CONFIG.useMockData) {
-    await delay(400);
-    return { success: true };
-  }
-
-  await apiFetch(ENDPOINTS.qcPlanDocumentDelete(planId, docId), { method: 'DELETE' });
-  return { success: true };
-};
-
-
-/**
- * Retrieve metadata for the currently active document of a Quality Plan.
- * Returns { success: true, data: null } when no document has been uploaded yet.
- *
- * @param {number} planId — ID of the QC Plan
- */
-export const getQcPlanCurrentDocument = async (planId) => {
-  logApiCall('GET', ENDPOINTS.qcPlanDocumentCurrent(planId));
-
-  if (SAMPLING_API_CONFIG.useMockData) {
-    await delay(200);
-    return { success: true, data: null };
-  }
-
-  const result = await apiFetch(ENDPOINTS.qcPlanDocumentCurrent(planId));
-  return { success: true, data: result.data || null };
-};
-
-
-// =============================================================================
 // Lookups
 // =============================================================================
 export const fetchDepartments = async (locationId = null) => {
@@ -1029,11 +879,6 @@ export default {
   updateQualityPlan,
   deleteQualityPlan,
   validateQCPlanNo,
-
-  // ── Document upload ──
-  uploadQcPlanDocument,
-  deleteQcPlanDocument,
-  getQcPlanCurrentDocument,
 
   fetchDepartments,
   fetchProducts,

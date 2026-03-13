@@ -38,8 +38,6 @@ import {
   fetchProducts,
   fetchCompanies,
   fetchCityLocations,
-  uploadQcPlanDocument,
-  deleteQcPlanDocument,
   SAMPLING_API_CONFIG,
 } from './api/samplingMasterApi';
 
@@ -49,9 +47,6 @@ import {
   getInitialQualityPlanState,
   debounce,
 } from './api/validation';
-
-// ── Reusable file upload component ──
-import QcPlanFileUpload from '../../../components/common/QcPlanFileUpload';
 
 import './styles/SamplingMaster.css';
 
@@ -90,13 +85,6 @@ const QualityPlanConfigPage = () => {
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
   const [selectedLocationId, setSelectedLocationId] = useState('');
 
-  // ── File upload state ──
-  // pendingFile: File selected in CREATE mode before plan is saved (no planId yet).
-  //              Uploaded immediately after the plan is created.
-  // planDocument: Document object loaded from server in EDIT mode (or after creation).
-  const [pendingFile,   setPendingFile]   = useState(null);
-  const [planDocument,  setPlanDocument]  = useState(null);
-
 
   // ═══════════════════════════════════════════════════════════════
   // Load master data on mount
@@ -122,42 +110,6 @@ const QualityPlanConfigPage = () => {
       const data = { ...response.data };
       setFormData(data);
       setPlanNoValid(true);
-
-      // ── Populate the file upload widget with any existing document ──
-      // Primary: use document embedded in plan response (requires updated samplingMasterApi).
-      // Fallback: call the dedicated document endpoint directly — works even if
-      //           samplingMasterApi doesn't yet include the currentDocument mapper.
-      if (data.currentDocument) {
-        setPlanDocument(data.currentDocument);
-      } else {
-        try {
-          const token = localStorage.getItem('authToken');
-          const baseUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) || '/api/v1';
-          const docResp = await fetch(`${baseUrl}/qc-plans/${id}/documents/current`, {
-            headers: {
-              'Accept': 'application/json',
-              ...(token && { 'Authorization': `Bearer ${token}` }),
-            },
-          });
-          if (docResp.ok) {
-            const docJson = await docResp.json();
-            if (docJson.data) {
-              setPlanDocument({
-                id:           docJson.data.id,
-                originalName: docJson.data.original_name,
-                fileSize:     docJson.data.file_size,
-                mimeType:     docJson.data.mime_type,
-                uploadedAt:   docJson.data.uploaded_at,
-                updatedAt:    docJson.data.updated_at,
-                uploadedBy:   docJson.data.uploaded_by,
-                downloadUrl:  docJson.data.download_url,   // needed for Download button
-              });
-            }
-          }
-        } catch (docErr) {
-          console.warn('[QCPlan] Could not load current document:', docErr);
-        }
-      }
 
       // ── Walk the cascade chain to populate all dependent dropdowns ──
 
@@ -329,28 +281,8 @@ const QualityPlanConfigPage = () => {
     setIsSubmitting(true);
     try {
       const cleanedFormData = { ...formData, stages: [] };
-      let savedPlan;
-      if (isEditing) {
-        savedPlan = await updateQualityPlan(id, cleanedFormData);
-      } else {
-        savedPlan = await createQualityPlan(cleanedFormData);
-      }
-
-      // ── Upload pending file (create mode only) ──
-      // In edit mode the QcPlanFileUpload component handles uploads directly.
-      // In create mode we hold the file until the plan ID is available.
-      if (!isEditing && pendingFile && savedPlan?.data?.id) {
-        try {
-          const uploadResult = await uploadQcPlanDocument(savedPlan.data.id, pendingFile);
-          setPlanDocument(uploadResult.data);
-          setPendingFile(null);
-        } catch (uploadError) {
-          // Plan was saved successfully — don't block the success modal.
-          // User can re-upload from the edit screen.
-          console.warn('[QualityPlanConfigPage] File upload failed after plan creation:', uploadError);
-        }
-      }
-
+      if (isEditing) { await updateQualityPlan(id, cleanedFormData); }
+      else { await createQualityPlan(cleanedFormData); }
       setShowSuccess(true);
     } catch (error) {
       console.error('Submit error:', error);
@@ -364,7 +296,6 @@ const QualityPlanConfigPage = () => {
       setErrors({});
       setTouched({});
       setPlanNoValid(false);
-      setPendingFile(null);   // clear any staged file
     }
   };
 
@@ -379,8 +310,6 @@ const QualityPlanConfigPage = () => {
     setErrors({});
     setTouched({});
     setPlanNoValid(false);
-    setPendingFile(null);
-    setPlanDocument(null);
   };
 
 
@@ -565,23 +494,6 @@ const QualityPlanConfigPage = () => {
                   />
                 </div>
 
-                {/* ── Reference Document Upload ────────────────────────────────
-                    Create mode : file is held locally until plan is saved,
-                                  then uploaded automatically in handleSubmit.
-                    Edit mode   : file is uploaded to server immediately on
-                                  selection; previous version kept as history.
-                ─────────────────────────────────────────────────────────────── */}
-                <QcPlanFileUpload
-                  planId={isEditing ? Number(id) : null}
-                  uploadFn={uploadQcPlanDocument}
-                  deleteFn={deleteQcPlanDocument}
-                  initialDocument={planDocument}
-                  onPendingFile={(file) => setPendingFile(file)}
-                  onUploadSuccess={(doc) => setPlanDocument(doc)}
-                  onDeleteSuccess={() => setPlanDocument(null)}
-                  disabled={isSubmitting}
-                  label="Reference Document"
-                />
 
               </FormSection>
 

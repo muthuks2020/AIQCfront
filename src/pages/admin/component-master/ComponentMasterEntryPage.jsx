@@ -712,7 +712,7 @@ const ComponentMasterEntryPage = () => {
                     name="qcPlanNo"
                     value={formData.qcPlanNo}
                     onChange={handleChange}
-                    options={qcPlans.map(p => ({ value: p.id, label: `${p.id} - ${p.name}` }))}
+                    options={qcPlans.map(p => ({ value: p.id, label: `${p.code} - ${p.name}` }))}
                     placeholder="Select QC plan"
                     error={touched.qcPlanNo && errors.qcPlanNo}
                     onBlur={handleBlur}
@@ -765,9 +765,10 @@ const ComponentMasterEntryPage = () => {
                     onChange={handleChange}
                     options={[
                       { value: 'direct_purchase', label: 'Direct Purchase' },
-                      { value: 'internal_job_work', label: 'Internal Job Work' },
-                      { value: 'sub_contracting', label: 'Sub Contracting' },
-                      { value: 'ec_rep_sticker', label: 'EC Rep Sticker' },
+                      { value: 'internal_job_work', label: 'Direct Purchase – Internal' },
+                      { value: 'sub_contracting', label: 'Job Work – Internal' },
+                      { value: 'ec_rep_sticker', label: 'Job Work – External' },
+                      { value: 'ec_Subcontract', label: 'Subcontract' },
                     ]}
                     placeholder="Select process code"
                     error={touched.prProcessCode && errors.prProcessCode}
@@ -800,7 +801,7 @@ const ComponentMasterEntryPage = () => {
                       name="samplingPlan"
                       value={formData.samplingPlan}
                       onChange={handleChange}
-                      options={samplingPlans.map(p => ({ value: p.id, label: `${p.name} (${p.aqlLevel})` }))}
+                      options={samplingPlans.map(p => ({ value: p.id, label: p.code }))}
                       placeholder="Select sampling plan"
                       error={touched.samplingPlan && errors.samplingPlan}
                       onBlur={handleBlur}
